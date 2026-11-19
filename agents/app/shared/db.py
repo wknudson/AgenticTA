@@ -62,6 +62,27 @@ def schema_files() -> list[Path]:
     return [shared, *per_agent]
 
 
+# Columns added after a table first shipped.  CREATE TABLE IF NOT EXISTS won't add them to a
+# teammate's existing database, so init_db adds any that are missing.  Append, never edit.
+ADDED_COLUMNS: dict[str, dict[str, str]] = {
+    "library_files": {
+        "label_source": "TEXT",
+        "review_reason": "TEXT",
+        "extract_method": "TEXT",
+        "page_count": "INTEGER",
+        "embedded": "INTEGER NOT NULL DEFAULT 0",
+    },
+}
+
+
+def _add_missing_columns(conn: sqlite3.Connection) -> None:
+    for table, cols in ADDED_COLUMNS.items():
+        have = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+        for name, ddl in cols.items():
+            if have and name not in have:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}")
+
+
 def init_db() -> None:
     """Create agent tables.  Requires the Express tables to exist (`npm run db:init`)."""
     with connect() as conn:
@@ -70,5 +91,18 @@ def init_db() -> None:
         ).fetchone()
         if not has_app:
             raise RuntimeError(f"{DB_PATH} has no app tables yet. Run `npm run db:init` from the repo root first.")
+        for table in ADDED_COLUMNS:  # existing tables first, so indexes in schema.sql can use new columns
+            if conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)).fetchone():
+                _add_missing_columns(conn)
+                break
         for path in schema_files():
             conn.executescript(path.read_text(encoding="utf-8"))
+        _add_missing_columns(conn)
+        # Old databases had chunks before the keyword index existed: build it once.
+        fts_rows = conn.execute("SELECT COUNT(*) FROM library_chunks_fts").fetchone()[0]
+        chunk_rows = conn.execute("SELECT COUNT(*) FROM library_chunks").fetchone()[0]
+        if chunk_rows and not fts_rows:
+            conn.execute("INSERT INTO library_chunks_fts(library_chunks_fts) VALUES ('rebuild')")
+    from .library import ensure_vector_index  # noqa: PLC0415 (avoid import cycle)
+
+    ensure_vector_index()

@@ -42,3 +42,6 @@ __pycache__/
 .pytest_cache/
 *.sqlite-wal
 *.sqlite-shm
+
+# Filing eval library (kept between runs to save free-tier AI quota)
+agents/evals/.cache/

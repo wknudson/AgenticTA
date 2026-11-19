@@ -1,0 +1,7 @@
+Unit 2 notes: the cell membrane and transport
+
+The membrane is a phospholipid bilayer with proteins floating in it (fluid mosaic model). It is selectively permeable.
+
+Passive transport needs no energy: diffusion, osmosis (water moving across a membrane), facilitated diffusion through channel proteins.
+Active transport uses ATP to move things against the concentration gradient, like the sodium-potassium pump.
+Hypotonic solution: cell gains water and swells. Hypertonic: cell loses water and shrinks. Isotonic: no net change.

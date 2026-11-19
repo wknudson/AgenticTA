@@ -62,7 +62,7 @@ For LangSmith, accept the invite to the team workspace, create an API key there,
 `npm run dev` (or Ctrl/Cmd+Shift+B in VS Code). Open **http://localhost:5173**, log in as a teacher (`sarah_b` / `password123`), and pick a class. The agent tabs are on the right of the class tab bar: **Library, Scheduler, Update materials, Study games, Insights, Approvals**.
 
 Try the whole loop without any API key:
-1. **Library** → *Run offline demo* (files a sample syllabus)
+1. **Library** → *File the sample course* (32 sample Biology files. Without a Gemini key they get rule-based labels, and the photos and scans wait in Needs review.)
 2. **Scheduler** → *Run offline demo* → it pauses for approval
 3. **Approvals** → *Approve* → back on **Scheduler** the events are `published`
 
@@ -82,6 +82,9 @@ Try the whole loop without any API key:
 | `npm run typecheck` | TypeScript checks (one error in `AssignmentQuestionsEditorModal.tsx` predates the agents work) |
 | `npm run db:reset` | delete the database, agent state and uploaded files, then recreate the seed data |
 | `npm run db:seed-metrics` | optional: 6 more students + 8 weeks of grades for the metrics pages |
+| `npm run setup:agents` | reinstall Python packages (run after pulling if `agents/pyproject.toml` changed) |
+| `npm run eval:filing` | filing eval with real models on its own saved library: label accuracy + keyword vs meaning vs hybrid search. It reuses AI labels between runs to save free-tier quota (`-- --search-only` makes no labeling calls) |
+| `npm run sample-course` | regenerate the sample Biology course files (already committed) |
 
 ## Accounts (seed data)
 
@@ -96,4 +99,6 @@ Try the whole loop without any API key:
 - **A panel shows amber model badges:** that agent's key isn't set. Run `npm run env` to see which file needs it. The offline demo still works.
 - **VS Code says "import could not be resolved"** in Python files: the interpreter isn't `agents/.venv`. Select it (section 3).
 - **Breakpoints aren't hit in the agents:** start them with **Agents API** from Run and Debug, not `npm run dev`. The dev server reloads on save, and that detaches the debugger.
+- **New Python code doesn't seem to take effect** (an endpoint gives 404, old behavior keeps happening): on Windows the agents service sometimes gets stuck mid-reload. The `agents` log says "Reloading…" but never "Application startup complete". Stop `npm run dev` (Ctrl+C) and start it again.
+- **AI labels say "daily free-tier limit":** a free Gemini key allows only about 20 labeling requests per day. Use **Re-check with AI** in the Library once it resets, or enable billing on the key.
 - **Weird data:** `npm run db:reset` (this wipes your local DB, including filed documents).

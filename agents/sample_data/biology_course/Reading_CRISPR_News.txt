@@ -1,0 +1,3 @@
+Reading: Editing genes with CRISPR
+
+CRISPR-Cas9 is a tool, borrowed from bacteria, that cuts DNA at a chosen spot. Scientists can then remove or replace a gene. In 2023 the first CRISPR therapy was approved to treat sickle cell disease. Questions for discussion: should we edit genes in embryos? Who decides which traits are 'fixable'?
