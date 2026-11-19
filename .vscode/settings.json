@@ -1,0 +1,15 @@
+{
+  // Repo-folder settings (Node side).  Shared settings are in AgenticTA.code-workspace;
+  // open that file for the full setup (Python interpreter, tests, debug compound).
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.venv": true,
+    "data": true,
+    "package-lock.json": true
+  },
+  "files.associations": {
+    "*.env.example": "dotenv",
+    ".env.example": "dotenv"
+  }
+}

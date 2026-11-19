@@ -12,6 +12,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 _tmp = Path(tempfile.mkdtemp(prefix="agenticta-test-"))
 os.environ["SQLITE_DB_PATH"] = str(_tmp / "test.sqlite")
 os.environ["LANGSMITH_TRACING"] = "false"  # tests never send traces
+# Ignore everyone's real agents/app/agents/<agent>/.env files; tests write their own here.
+os.environ["AGENTICTA_AGENT_ENV_DIR"] = str(_tmp / "agent-env")
 
 _conn = sqlite3.connect(os.environ["SQLITE_DB_PATH"])
 for name in ("schema.sql", "seed.sql"):

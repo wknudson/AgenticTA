@@ -20,5 +20,11 @@ Shared files (`agents/app/shared/*` except `library.py`, `agents/config.yaml`, `
 
 ## Secrets and data
 
-- Never commit `.env`, `data/`, or real student information. `.gitignore` covers the first two.
+- Never commit any `.env` (the project one or an agent's), `data/`, or real student information. `.gitignore` covers the first two. Commit the `.env.example` templates instead.
+- Your model keys go in **your agent's** `.env` (`agents/app/agents/<agent>/.env`). LangSmith goes in the project `.env`. `npm run env` shows what's missing without printing values.
+- Want to try a different model? Use `MODEL_<ROLE>=provider:model` in your agent's `.env`. Change the shared `agents/config.yaml` only when the team agrees on the switch.
+
+## Editor
+
+Everyone uses VS Code with `AgenticTA.code-workspace` (see SETUP.md section 3). If you add a useful debug config or task, put it in `.vscode/` or `agents/.vscode/` so everyone gets it.
 - Sample teacher materials for testing: put them in your own `data/files` through the Library tab, not in git.
