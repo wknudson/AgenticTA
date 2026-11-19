@@ -2,19 +2,12 @@ import express from 'express';
 import multer from 'multer';
 import OpenAI from 'openai';
 import { PDFParse } from 'pdf-parse';
+import { llm, LLM_MODEL, LLM_NOT_CONFIGURED } from '../ai/client.js';
 import { query } from '../db/connection.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-const groq = process.env.GROQ_API_KEY
-  ? new OpenAI({
-      apiKey: process.env.GROQ_API_KEY,
-      baseURL: 'https://api.groq.com/openai/v1',
-    })
-  : null;
-
-const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.1-70b-versatile';
 
 const ASSIGNMENT_QUESTION_REFUSAL =
   "That looks like a question directly from this assignment, so I can't answer it for you. I can help you think through the ideas behind it, review related concepts, or work through a similar example — what would you like to focus on?";
@@ -65,10 +58,10 @@ function messageMatchesAssignmentQuestion(message: string, questionTexts: string
 
 /** POST /api/ai/chat — tutor chat (student message + history + teacher instructions) */
 router.post('/chat', async (req: express.Request, res: express.Response) => {
-  if (!groq) {
+  if (!llm) {
     return res.status(503).json({
       success: false,
-      error: 'Groq API is not configured. Set GROQ_API_KEY in .env.',
+      error: LLM_NOT_CONFIGURED,
     });
   }
 
@@ -152,8 +145,8 @@ ${assignmentContext ? `\nHere is the assignment context to help you assist the s
       { role: 'user', content: message },
     ];
 
-    const completion = await groq.chat.completions.create({
-      model: GROQ_MODEL,
+    const completion = await llm.chat.completions.create({
+      model: LLM_MODEL,
       messages,
     });
 
@@ -170,7 +163,7 @@ ${assignmentContext ? `\nHere is the assignment context to help you assist the s
 
     return res.json({ success: true, text });
   } catch (err) {
-    console.error('Groq chat error:', err);
+    console.error('LLM chat error:', err);
     return res.status(500).json({
       success: false,
       error: 'Unable to connect to AI Tutor.',
@@ -213,10 +206,10 @@ const QUESTION_TYPES = ['multiple_choice', 'true_false', 'short_answer', 'select
 
 /** POST /api/ai/generate-questions — assignment questions from topic, materials, instructions, count, questionTypes, generationCommands */
 router.post('/generate-questions', async (req: express.Request, res: express.Response) => {
-  if (!groq) {
+  if (!llm) {
     return res.status(503).json({
       success: false,
-      error: 'Groq API is not configured. Set GROQ_API_KEY in .env.',
+      error: LLM_NOT_CONFIGURED,
     });
   }
 
@@ -297,8 +290,8 @@ Output format: Return ONLY valid JSON (no markdown, no code fence). Structure:
 }
 Include exactly ${safeCount} items in "questions".`;
 
-    const completion = await groq.chat.completions.create({
-      model: GROQ_MODEL,
+    const completion = await llm.chat.completions.create({
+      model: LLM_MODEL,
       messages: [{ role: 'user', content: userContent }],
     });
 
@@ -321,7 +314,7 @@ Include exactly ${safeCount} items in "questions".`;
         };
       }
     } catch (parseErr) {
-      console.error('Groq generate-questions parse error:', parseErr);
+      console.error('LLM generate-questions parse error:', parseErr);
       return res.status(500).json({
         success: false,
         error: 'AI did not return valid JSON. Try again.',
@@ -330,8 +323,8 @@ Include exactly ${safeCount} items in "questions".`;
     let pdfSummary: string | null = null;
     if (Array.isArray(materials) && materials.length && materials.some((t) => typeof t === 'string' && t.length > 0)) {
       try {
-        const summaryCompletion = await groq.chat.completions.create({
-          model: GROQ_MODEL,
+        const summaryCompletion = await llm.chat.completions.create({
+          model: LLM_MODEL,
           messages: [{
             role: 'user',
             content: `Summarize the following document content in 2-4 paragraphs for a student study aid. Focus on key concepts, definitions, and main ideas:\n\n${materials.map((t, i) => `--- Document ${i + 1} ---\n${typeof t === 'string' ? t.slice(0, 40000) : ''}`).join('\n\n')}`,
@@ -345,7 +338,7 @@ Include exactly ${safeCount} items in "questions".`;
 
     return res.json({ success: true, data, pdfSummary });
   } catch (err) {
-    console.error('Groq generate-questions error:', err);
+    console.error('LLM generate-questions error:', err);
     return res.status(500).json({
       success: false,
       error: 'Error generating questions.',
@@ -355,10 +348,10 @@ Include exactly ${safeCount} items in "questions".`;
 
 /** POST /api/ai/batch-update-questions — apply a teacher command to update all questions, return new JSON + message */
 router.post('/batch-update-questions', async (req: express.Request, res: express.Response) => {
-  if (!groq) {
+  if (!llm) {
     return res.status(503).json({
       success: false,
-      error: 'Groq API is not configured. Set GROQ_API_KEY in .env.',
+      error: LLM_NOT_CONFIGURED,
     });
   }
 
@@ -388,8 +381,8 @@ Task:
 
 Return ONLY: first the complete JSON (valid, no markdown fence), then a blank line, then the one-line summary. No other text.`;
 
-    const completion = await groq.chat.completions.create({
-      model: GROQ_MODEL,
+    const completion = await llm.chat.completions.create({
+      model: LLM_MODEL,
       messages: [{ role: 'user', content: prompt }],
     });
 
@@ -421,7 +414,7 @@ Return ONLY: first the complete JSON (valid, no markdown fence), then a blank li
     }
     return res.json({ success: true, data, message: summary });
   } catch (err) {
-    console.error('Groq batch-update-questions error:', err);
+    console.error('LLM batch-update-questions error:', err);
     return res.status(500).json({
       success: false,
       error: 'Error updating questions.',

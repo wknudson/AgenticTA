@@ -218,7 +218,7 @@ router.post('/students/passwords/generate', async (req: express.Request, res: ex
     }
 
     const found = await query(
-      'SELECT student_id FROM students WHERE student_id = ANY($1::bigint[]) ORDER BY student_id',
+      'SELECT student_id FROM students WHERE student_id IN (SELECT value FROM json_each($1)) ORDER BY student_id',
       [studentIds]
     );
     const foundIds = found.rows.map((r) => Number(r.student_id)).filter((n) => Number.isFinite(n));
@@ -332,7 +332,7 @@ router.post('/students/passwords/save', async (req: express.Request, res: expres
     }
 
     const ids = Array.from(new Set(normalized.map((u) => u.studentId)));
-    const found = await query('SELECT student_id FROM students WHERE student_id = ANY($1::bigint[])', [ids]);
+    const found = await query('SELECT student_id FROM students WHERE student_id IN (SELECT value FROM json_each($1))', [ids]);
     const foundSet = new Set(found.rows.map((r) => Number(r.student_id)));
     const missingIds = ids.filter((id) => !foundSet.has(id));
 

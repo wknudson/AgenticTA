@@ -1,8 +1,9 @@
 -- ============================================================
 -- Lyrning - Learning Management Database Schema (SQLite)
+-- Timestamps are ISO-8601 UTC text (2026-11-19T21:02:17.123Z); dates are YYYY-MM-DD text.
+-- Tables owned by the Python agents service are created by agents/app/shared/db.py.
 -- ============================================================
 
--- Students
 CREATE TABLE students (
     student_id    INTEGER PRIMARY KEY AUTOINCREMENT,
     first_name    TEXT NOT NULL,
@@ -13,7 +14,6 @@ CREATE TABLE students (
     date_of_birth TEXT NOT NULL
 );
 
--- Teachers
 CREATE TABLE teachers (
     teacher_id    INTEGER PRIMARY KEY AUTOINCREMENT,
     first_name    TEXT NOT NULL,
@@ -24,7 +24,13 @@ CREATE TABLE teachers (
     date_of_birth TEXT NOT NULL
 );
 
--- Subjects
+CREATE TABLE admins (
+    admin_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    username      TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
 CREATE TABLE subjects (
     subject_id   INTEGER PRIMARY KEY AUTOINCREMENT,
     subject_code TEXT  NOT NULL UNIQUE,
@@ -32,7 +38,6 @@ CREATE TABLE subjects (
     credits      REAL NOT NULL DEFAULT 3.0
 );
 
--- Classes
 CREATE TABLE classes (
     class_id     INTEGER PRIMARY KEY AUTOINCREMENT,
     class_code   TEXT  NOT NULL UNIQUE,
@@ -44,16 +49,14 @@ CREATE TABLE classes (
     room_number  TEXT
 );
 
--- Student ↔ Class enrollment
 CREATE TABLE student_classes (
     student_id      INTEGER  NOT NULL REFERENCES students(student_id),
     class_id        INTEGER  NOT NULL REFERENCES classes(class_id),
-    enrollment_date TEXT NOT NULL DEFAULT (date('now')),
+    enrollment_date TEXT NOT NULL DEFAULT CURRENT_DATE,
     status          TEXT NOT NULL DEFAULT 'active',
     PRIMARY KEY (student_id, class_id)
 );
 
--- Assignments
 CREATE TABLE assignments (
     assignment_id   INTEGER PRIMARY KEY AUTOINCREMENT,
     class_id        INTEGER          NOT NULL REFERENCES classes(class_id),
@@ -71,17 +74,8 @@ CREATE TABLE assignments (
     pdf_summary     TEXT
 );
 
--- Assignment PDF documents (stored in DB as BLOB; multiple per assignment)
-CREATE TABLE assignment_documents (
-    document_id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    assignment_id INTEGER NOT NULL REFERENCES assignments(assignment_id) ON DELETE CASCADE,
-    filename      TEXT,
-    mime_type     TEXT NOT NULL DEFAULT 'application/pdf',
-    pdf_blob      BLOB NOT NULL,
-    uploaded_at   TEXT NOT NULL DEFAULT (datetime('now'))
-);
+-- Note: assignment_documents table removed; PDFs are not stored.
 
--- Assignment questions (one per question; order by sort_order)
 CREATE TABLE assignment_questions (
     question_id   INTEGER PRIMARY KEY AUTOINCREMENT,
     assignment_id INTEGER NOT NULL REFERENCES assignments(assignment_id) ON DELETE CASCADE,
@@ -92,7 +86,6 @@ CREATE TABLE assignment_questions (
     correct_answer TEXT
 );
 
--- Options for a question (e.g. multiple-choice options; front end randomizes display order)
 CREATE TABLE assignment_question_options (
     option_id    INTEGER PRIMARY KEY AUTOINCREMENT,
     question_id  INTEGER NOT NULL REFERENCES assignment_questions(question_id) ON DELETE CASCADE,
@@ -100,7 +93,6 @@ CREATE TABLE assignment_question_options (
     is_correct   INTEGER NOT NULL DEFAULT 0
 );
 
--- Student Grades (per assignment)
 CREATE TABLE student_grades (
     student_id          INTEGER          NOT NULL REFERENCES students(student_id),
     assignment_id       INTEGER          NOT NULL REFERENCES assignments(assignment_id),
@@ -127,7 +119,7 @@ CREATE TABLE student_assignment_responses (
     is_correct          INTEGER,
     correctness_score   REAL,
     points_earned       REAL,
-    submitted_at        TEXT NOT NULL DEFAULT (datetime('now'))
+    submitted_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
 CREATE TABLE student_assignment_attempt_grades (
@@ -141,8 +133,8 @@ CREATE TABLE student_assignment_attempt_grades (
     ai_dependency_score REAL,
     engagement_score    REAL,
     is_kept             INTEGER NOT NULL DEFAULT 0,
-    submission_date     TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    graded_date         TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    submission_date     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    graded_date         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     PRIMARY KEY (student_id, assignment_id, attempt_number)
 );
 
@@ -153,10 +145,9 @@ CREATE TABLE student_chat_messages (
     attempt_number  INTEGER NOT NULL,
     role            TEXT NOT NULL,
     content         TEXT NOT NULL,
-    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
--- Student Metrics (weekly rollup per class)
 CREATE TABLE student_metrics (
     student_id          INTEGER  NOT NULL REFERENCES students(student_id),
     class_id            INTEGER  NOT NULL REFERENCES classes(class_id),
@@ -171,13 +162,26 @@ CREATE TABLE student_metrics (
     PRIMARY KEY (student_id, class_id, week_number)
 );
 
--- ============================================================
+-- Plaintext passwords exist only so the teacher UI can show/share student passwords.
+-- Password hashes remain the source of truth for authentication.
+CREATE TABLE student_passwords_plaintext (
+    student_id         INTEGER PRIMARY KEY REFERENCES students(student_id) ON DELETE CASCADE,
+    password_plaintext TEXT NOT NULL,
+    updated_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+CREATE TABLE ai_usage_logs (
+    log_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER REFERENCES students(student_id),
+    action     TEXT NOT NULL,
+    timestamp  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    details    TEXT -- JSON
+);
+
 -- Indexes
--- ============================================================
 CREATE INDEX idx_classes_subject    ON classes(subject_id);
 CREATE INDEX idx_classes_teacher    ON classes(teacher_id);
 CREATE INDEX idx_assignments_class  ON assignments(class_id);
-CREATE INDEX idx_assignment_documents_assignment ON assignment_documents(assignment_id);
 CREATE INDEX idx_assignment_questions_assignment ON assignment_questions(assignment_id);
 CREATE INDEX idx_assignment_question_options_question ON assignment_question_options(question_id);
 CREATE INDEX idx_grades_student     ON student_grades(student_id);
@@ -188,3 +192,4 @@ CREATE INDEX idx_student_chat_messages_session ON student_chat_messages(student_
 CREATE INDEX idx_student_chat_messages_assignment_student ON student_chat_messages(assignment_id, student_id, attempt_number);
 CREATE INDEX idx_metrics_student    ON student_metrics(student_id);
 CREATE INDEX idx_metrics_class      ON student_metrics(class_id);
+

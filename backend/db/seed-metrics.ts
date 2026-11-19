@@ -1,23 +1,20 @@
-import dotenv from 'dotenv';
-import path from 'path';
+/**
+ * Optional demo data: 6 extra students + 8 weeks of grades/metrics so the
+ * metrics dashboards have something to show.  Run with `npm run db:seed-metrics`.
+ */
 import bcrypt from 'bcrypt';
-import { Pool } from 'pg';
-import { fileURLToPath } from 'url';
+import { query } from './connection.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const client = { query: <T = any>(text: string, params?: any[]) => query(text, params) as Promise<{ rows: T[] }> };
 
-dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
-
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error('DATABASE_URL is required');
+/** ISO-8601 week number (what Postgres EXTRACT(WEEK ...) returned). */
+function isoWeek(d: Date): number {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  return Math.ceil(((t.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 }
-
-const pool = new Pool({
-  connectionString,
-  ssl: { rejectUnauthorized: false },
-});
 
 type MockStudent = {
   firstName: string;
@@ -117,7 +114,6 @@ function shouldEnrollInClass(studentId: number, classId: number): boolean {
 }
 
 async function main() {
-  const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
@@ -157,7 +153,7 @@ async function main() {
     const questionRes = await client.query<{ assignment_id: number; question_id: number }>(
       `SELECT assignment_id, MIN(question_id) AS question_id
        FROM assignment_questions
-       WHERE assignment_id = ANY($1::bigint[])
+       WHERE assignment_id IN (SELECT value FROM json_each($1))
        GROUP BY assignment_id`,
       [selectedAssignmentIds]
     );
@@ -174,10 +170,10 @@ async function main() {
          VALUES ($1,$2,$3,$4,$5,$6)
          ON CONFLICT (username)
          DO UPDATE SET
-           first_name = EXCLUDED.first_name,
-           last_name = EXCLUDED.last_name,
-           email = EXCLUDED.email,
-           date_of_birth = EXCLUDED.date_of_birth
+           first_name = excluded.first_name,
+           last_name = excluded.last_name,
+           email = excluded.email,
+           date_of_birth = excluded.date_of_birth
          RETURNING student_id`,
         [s.firstName, s.lastName, s.email, s.username, passwordHash, s.dateOfBirth]
       );
@@ -224,9 +220,9 @@ async function main() {
         const status = enrolledClassSet.has(classId) ? 'active' : 'inactive';
         await client.query(
           `INSERT INTO student_classes (student_id, class_id, enrollment_date, status)
-           VALUES ($1, $2, CURRENT_DATE, $3)
+           VALUES ($1, $2, date('now'), $3)
            ON CONFLICT (student_id, class_id)
-           DO UPDATE SET status = EXCLUDED.status`,
+           DO UPDATE SET status = excluded.status`,
           [studentId, classId, status]
         );
       }
@@ -235,15 +231,15 @@ async function main() {
     // Idempotency cleanup for this seed set only.
     await client.query(
       `DELETE FROM ai_usage_logs
-       WHERE details->>'seed_tag' = $1`,
+       WHERE json_extract(details, '$.seed_tag') = $1`,
       [SEED_TAG]
     );
 
     // Also remove previously seeded response rows for these students + selected assignments.
     await client.query(
       `DELETE FROM student_assignment_responses
-       WHERE student_id = ANY($1::bigint[])
-         AND assignment_id = ANY($2::bigint[])`,
+       WHERE student_id IN (SELECT value FROM json_each($1))
+         AND assignment_id IN (SELECT value FROM json_each($2))`,
       [studentIds, selectedAssignmentIds]
     );
 
@@ -287,15 +283,15 @@ async function main() {
              ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
              ON CONFLICT (student_id, assignment_id)
              DO UPDATE SET
-               points_earned = EXCLUDED.points_earned,
-               percentage = EXCLUDED.percentage,
-               letter_grade = EXCLUDED.letter_grade,
-               submission_date = EXCLUDED.submission_date,
-               graded_date = EXCLUDED.graded_date,
-               understanding_score = EXCLUDED.understanding_score,
-               ai_dependency_score = EXCLUDED.ai_dependency_score,
-               engagement_score = EXCLUDED.engagement_score,
-               submission_attempts = EXCLUDED.submission_attempts`,
+               points_earned = excluded.points_earned,
+               percentage = excluded.percentage,
+               letter_grade = excluded.letter_grade,
+               submission_date = excluded.submission_date,
+               graded_date = excluded.graded_date,
+               understanding_score = excluded.understanding_score,
+               ai_dependency_score = excluded.ai_dependency_score,
+               engagement_score = excluded.engagement_score,
+               submission_attempts = excluded.submission_attempts`,
             [
               studentId,
               assignment.assignment_id,
@@ -344,7 +340,7 @@ async function main() {
           logTime.setMinutes(logTime.getMinutes() - (c + 1) * 12);
           await client.query(
               `INSERT INTO ai_usage_logs (student_id, action, timestamp, details)
-               VALUES ($1, 'chat', $2, $3::jsonb)`,
+               VALUES ($1, 'chat', $2, $3)`,
               [
                 studentId,
                 fmtDate(logTime),
@@ -369,11 +365,7 @@ async function main() {
       for (let weekIdx = 0; weekIdx < 8; weekIdx++) {
         const weekStart = weekStarts[weekIdx];
         const weekEnd = addDays(weekStart, 6);
-        const weekNumberRes = await client.query<{ week_number: number }>(
-          `SELECT EXTRACT(WEEK FROM $1::timestamptz)::int AS week_number`,
-          [fmtDate(weekStart)]
-        );
-        const weekNumber = Number(weekNumberRes.rows[0].week_number);
+        const weekNumber = isoWeek(weekStart);
 
         // roll up per class for this student/week (as required by student_metrics PK).
         for (const classId of enrolledClassIds) {
@@ -390,9 +382,9 @@ async function main() {
              JOIN assignments a ON a.assignment_id = sg.assignment_id
              WHERE sg.student_id = $1
                AND a.class_id = $2
-               AND sg.submission_date >= $3::timestamptz
-               AND sg.submission_date < ($3::timestamptz + INTERVAL '7 days')`,
-            [studentId, classId, fmtDate(weekStart)]
+               AND sg.submission_date >= $3
+               AND sg.submission_date < $4`,
+            [studentId, classId, fmtDate(weekStart), fmtDate(addDays(weekStart, 7))]
           );
           const agg = aggRes.rows[0];
 
@@ -421,13 +413,13 @@ async function main() {
              ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
              ON CONFLICT (student_id, class_id, week_number)
              DO UPDATE SET
-               week_start_date = EXCLUDED.week_start_date,
-               week_end_date = EXCLUDED.week_end_date,
-               accuracy_score = EXCLUDED.accuracy_score,
-               ai_dependency_score = EXCLUDED.ai_dependency_score,
-               understanding_score = EXCLUDED.understanding_score,
-               engagement_score = EXCLUDED.engagement_score,
-               notes = EXCLUDED.notes`,
+               week_start_date = excluded.week_start_date,
+               week_end_date = excluded.week_end_date,
+               accuracy_score = excluded.accuracy_score,
+               ai_dependency_score = excluded.ai_dependency_score,
+               understanding_score = excluded.understanding_score,
+               engagement_score = excluded.engagement_score,
+               notes = excluded.notes`,
             [
               studentId,
               classId,
@@ -452,9 +444,6 @@ async function main() {
     await client.query('ROLLBACK');
     console.error('❌ Seed failed:', err);
     process.exitCode = 1;
-  } finally {
-    client.release();
-    await pool.end();
   }
 }
 
