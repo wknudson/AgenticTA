@@ -1,0 +1,66 @@
+# Which model each agent role uses.  Changing a model is a one-line edit here.
+#
+# provider: openai | anthropic | google_genai | ollama
+# Keys come from the repo-root .env: OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY.
+# Ollama needs no key, just `ollama serve` running and the model pulled.
+#
+# Model choices follow the plan: the cheapest model that does each job well,
+# a stronger model only where planning or reviewing needs it, and a local model
+# where student data is involved.  Verify IDs against each provider's model list
+# if a call fails with "model not found".
+
+langsmith_project_prefix: agentic-ta
+
+agents:
+  filing:                       # Phase 1 pipeline (owner: Will)
+    title: Filing pipeline
+    owner: Will
+    kind: Fixed workflow (not an agent)
+    pattern: Sequential pipeline
+    models:
+      labeler:   {provider: google_genai, model: gemini-3.8-flash}   # cheap + multimodal (images, scans)
+    embeddings:
+      model: BAAI/bge-small-en-v1.5   # open-source, runs in-process via fastembed (384 dims)
+
+  scheduler:                    # owner: Teammate B
+    title: Scheduler
+    owner: Teammate B
+    kind: Semi-autonomous single agent
+    pattern: Handoff with decision point
+    models:
+      main: {provider: anthropic, model: claude-haiku-5-5}           # fast + reliable tool calling
+
+  materials:                    # owner: Teammate C
+    title: Materials update
+    owner: Teammate C
+    kind: Planner + workers
+    pattern: Hierarchical task decomposition
+    models:
+      planner: {provider: anthropic, model: claude-sonnet-5-5}       # strong model plans
+      editor:  {provider: openai,    model: gpt-6-luna}              # cheap model edits each file
+
+  games:                        # owner: Teammate D
+    title: Study games
+    owner: Teammate D
+    kind: Generator + independent reviewer
+    pattern: Collaborative (generate -> review)
+    models:
+      generator: {provider: openai,    model: gpt-6-luna}            # cheap generator
+      reviewer:  {provider: anthropic, model: claude-sonnet-5-5}     # different provider reviews
+
+  misconceptions:               # owner: Teammate B
+    title: Misconception finder
+    owner: Teammate B
+    kind: Workflow agent over student data
+    pattern: Pipeline (redact -> cluster -> summarize -> suggest)
+    models:
+      local:    {provider: ollama,    model: phi3}                   # student chats stay on this machine
+      baseline: {provider: anthropic, model: claude-haiku-5-5}       # API comparison for the LangSmith eval
+
+  tutor:                        # owner: Will
+    title: Tutor
+    owner: Will
+    kind: Conversational agent, read-only tools
+    pattern: Single agent
+    models:
+      main: {provider: openai, model: gpt-6.2-sol}

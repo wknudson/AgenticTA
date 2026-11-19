@@ -18,6 +18,7 @@ import AdminGlobalMetrics from './components/AdminGlobalMetrics';
 import AdminAddTeacher from './components/AdminAddTeacher';
 import Home from './components/Home';
 import Contact from './components/Contact';
+import { findAgentTab } from './components/agents/registry';
 import { ViewState, UserSession, Assignment, ClassSummary, UserRole } from './types';
 import { BookOpen, Trash2 } from './components/Icons';
 import { fetchClassAssignments, fetchAssignmentQuestions, deleteAssignment, updateAssignment, type AssignmentQuestionPreview } from './services/api';
@@ -598,8 +599,14 @@ const App: React.FC = () => {
             </button>
           </div>
         );
-      default:
+      default: {
+        const agentTab = findAgentTab(view);
+        if (agentTab && selectedClass) {
+          const Panel = agentTab.component;
+          return <Panel classId={selectedClass.class_id} teacherId={session.userId ?? 0} />;
+        }
         return null;
+      }
     }
   };
 

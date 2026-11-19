@@ -1,142 +1,65 @@
-# Lyrning LMS - Setup & Running Guide
+# AgenticTA: Setup (Windows and Mac)
 
-## Prerequisites
+Setup takes about 10 minutes the first time. You don't need any outside database or server; everything runs on your laptop.
 
-1. **Node.js** (v20.x recommended; repo includes `.nvmrc`)
-2. A **Postgres database** — in production you’ll use Neon (via `DATABASE_URL`); for local dev you can use the same Neon DB or any Postgres instance.
+## 1. Install once
 
-## Installation
+| Tool | Why | Check |
+|---|---|---|
+| **Node.js 20+** | frontend + Express API | `node --version` |
+| **Python 3.12+** | the agents service | `python --version` (Mac: `python3 --version`) |
+| **uv** | installs and runs the Python side | `pip install uv` (Mac: `pip3 install uv` or `brew install uv`) |
+| Ollama *(only for the misconception finder)* | local model | install from ollama.com, then `ollama pull phi3` |
 
-Install all dependencies:
-
-```bash
-npm install
-```
-
-## Database Setup (Postgres)
-
-Initialize the Postgres database (creates tables and seed data):
+## 2. Get the code and set up
 
 ```bash
-npm run db:init
+git clone https://github.com/wknudson/AgenticTA.git
+cd AgenticTA
+cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
+npm run setup               # npm install + create the SQLite DB + install Python packages
 ```
 
-This uses the `DATABASE_URL` Postgres connection string and runs the Postgres schema/seed. If you set `RESET_DB=true` in your env, it will drop and recreate the schema first.
+Fill in `.env` with whatever API keys you have. **Every agent has an offline demo that needs no key**, so you can start right away. For LangSmith, accept the invite to the team workspace, create an API key there, and set `LANGSMITH_API_KEY`.
 
-## Environment Variables
-
-Copy `.env.example` to `.env` and adjust if needed:
-
-```env
-DATABASE_URL=postgresql://neondb_owner:your_password_here@your_host_here/neondb?sslmode=require
-PORT=3001
-NODE_ENV=development
-GROQ_API_KEY=your_groq_api_key_here
-GROQ_MODEL=llama-3.3-70b-versatile
-# Optional: set to true once to drop & reseed Postgres
-RESET_DB=false
-```
-
-- `DATABASE_URL` — Postgres connection string (Neon in production).
-- `PORT` — backend port (frontend calls `/api/...` on the same origin in production).
-
-## Running the Application
-
-### Option 1: Run Both Backend & Frontend Together
+## 3. Run
 
 ```bash
 npm run dev
 ```
 
-Backend runs on the port in `.env` (e.g. **3001**), frontend on **http://localhost:5173**.
+Open **http://localhost:5173**, log in as a teacher (`sarah_b` / `password123`), and pick a class. The agent tabs are on the right of the class tab bar: **Library, Scheduler, Update materials, Study games, Insights, Approvals**.
 
-### Option 2: Run Them Separately
+Try the whole loop without any API key:
+1. **Library** → *Run offline demo* (files a sample syllabus)
+2. **Scheduler** → *Run offline demo* → it pauses for approval
+3. **Approvals** → *Approve* → back on **Scheduler** the events are `published`
 
-Terminal 1 — Backend:
+| Process | URL |
+|---|---|
+| Frontend (Vite) | http://localhost:5173 |
+| Express API | http://localhost:3001 |
+| Agents API + interactive docs | http://localhost:8000/docs |
 
-```bash
-npm run dev:backend
-```
+## Useful commands
 
-Terminal 2 — Frontend:
+| Command | What it does |
+|---|---|
+| `npm run dev` | start all three processes |
+| `npm run test:agents` | Python tests (offline demos, approvals, guardrails) |
+| `npm run typecheck` | TypeScript checks (one error in `AssignmentQuestionsEditorModal.tsx` predates the agents work) |
+| `npm run db:reset` | delete the database and recreate it from `backend/db/schema.sql` + `seed.sql` |
+| `npm run db:seed-metrics` | optional: 6 more students + 8 weeks of grades for the metrics pages |
 
-```bash
-npm run dev:frontend
-```
+## Accounts (seed data)
 
-## Login Credentials
-
-After seeding, you can log in with (password for all: **password123**):
-
-**Students:** `alice_j`, `bob_m`, `chloe_p`, `david_n`, `emma_w`, `felix_c`, `grace_t`, `henry_d`
-
-**Teachers:** `sarah_b`, `james_ob`, `priya_s`
-
-## Project Structure
-
-```
-├── backend/
-│   ├── db/
-│   │   ├── connection.ts     # Postgres connection and query helper (pg Pool)
-│   │   ├── schema.pg.sql     # Database schema (Postgres)
-│   │   ├── seed.pg.sql       # Test data for Postgres
-│   │   ├── schema.sql        # Legacy SQLite schema (no longer used in production)
-│   │   ├── seed.sql          # Legacy SQLite seed (no longer used in production)
-│   │   └── init-db.ts        # Script to create/reset Postgres schema (npm run db:init)
-│   ├── routes/
-│   ├── types.ts
-│   ├── server.ts
-│   └── tsconfig.json
-├── frontend/
-│   ├── components/
-│   ├── services/
-│   └── ...
-├── package.json
-├── .env
-└── .env.example
-```
-
-## API Endpoints
-
-### Authentication
-
-- **POST** `/api/auth/login` — Authenticate a user
-
-Request body:
-
-```json
-{
-  "username": "alice_j",
-  "password": "password123",
-  "userType": "student"
-}
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "role": "student",
-  "userId": 1,
-  "userName": "alice_j",
-  "firstName": "Alice",
-  "lastName": "Johnson",
-  "email": "alice.johnson@school.edu"
-}
-```
+- Teachers: `sarah_b`, `james_ob`, `priya_s`, password `password123`
+- Admin: `/admin`, `admin` / `adminMetrics!`
+- Students get random passwords at first start. Teachers can see them under **Class Info**.
 
 ## Troubleshooting
 
-### Backend can't find the database
-
-- Run `npm run db:init` from the project root.
-- Ensure `SQLITE_DB_PATH` in `.env` points to a path the app can write to (e.g. `./backend/db/lyrning.sqlite`).
-
-### Port already in use
-
-- Change `PORT` in `.env` (backend) and `VITE_API_URL` if needed; frontend port is in `frontend/vite.config.ts`.
-
-### CORS errors
-
-- Backend CORS is set for the frontend origin (e.g. `http://localhost:5173`). For other origins, update CORS in `backend/server.ts`.
+- **"The agents service is not running"** in a panel: check the `agents` lines in the `npm run dev` output. Most often `uv` isn't installed, or `npm run setup` wasn't run.
+- **`uv` not found on Windows** after `pip install uv`: that's fine, the npm scripts fall back to `python -m uv`.
+- **A panel shows amber model badges:** that agent's API key isn't in `.env`. The offline demo still works.
+- **Weird data:** `npm run db:reset` (this wipes your local DB, including filed documents).

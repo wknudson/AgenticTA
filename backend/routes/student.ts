@@ -1,16 +1,9 @@
 import express from 'express';
 import { query } from '../db/connection.js';
 import { requireStudentAuth, type StudentAuthedRequest } from '../auth/studentToken.js';
-import OpenAI from 'openai';
+import { llm, LLM_MODEL } from '../ai/client.js';
 
-const groq = process.env.GROQ_API_KEY
-  ? new OpenAI({
-      apiKey: process.env.GROQ_API_KEY,
-      baseURL: 'https://api.groq.com/openai/v1',
-    })
-  : null;
 
-const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.1-70b-versatile';
 
 const router = express.Router();
 
@@ -137,9 +130,9 @@ function computeUnderstandingFromAttemptPercentages(percentages: number[]): numb
 async function upsertWeeklyMetrics(studentId: number, classId: number): Promise<void> {
   const weekRes = await query(
     `SELECT
-       DATE_TRUNC('week', NOW())::date AS week_start_date,
-       (DATE_TRUNC('week', NOW()) + INTERVAL '6 days')::date AS week_end_date,
-       EXTRACT(WEEK FROM NOW())::int AS week_number`
+       date('now', 'weekday 0', '-6 days') AS week_start_date,
+       date('now', 'weekday 0') AS week_end_date,
+       CAST(strftime('%V', 'now') AS INTEGER) AS week_number`
   );
   const week = weekRes.rows[0] as {
     week_start_date: string;
@@ -157,8 +150,8 @@ async function upsertWeeklyMetrics(studentId: number, classId: number): Promise<
      JOIN assignments a ON a.assignment_id = sg.assignment_id
      WHERE sg.student_id = $1
        AND a.class_id = $2
-       AND sg.submission_date >= $3::date
-       AND sg.submission_date < ($3::date + INTERVAL '7 days')`,
+       AND sg.submission_date >= $3
+       AND sg.submission_date < date($3, '+7 days')`,
     [studentId, classId, week.week_start_date]
   );
   const agg = aggRes.rows[0] as {
@@ -584,15 +577,14 @@ router.post('/assignments/:classId/:assignmentId/submit', requireStudentAuth, as
 
         if (!studentResponse) {
           correctnessScore = 0;
-        } else if (groq) {
+        } else if (llm) {
           try {
-            const completion = await groq.chat.completions.create({
-              model: GROQ_MODEL,
+            const completion = await llm.chat.completions.create({
+              model: LLM_MODEL,
               messages: [{
                 role: 'user',
                 content: `You are grading a short answer question. Be reasonably lenient and focus on demonstrated understanding.\n\nQuestion: "${q.questionText}"\nExpected answer: "${expectedAnswer}"\nStudent's answer: "${studentResponse}"\n\nReply with only "1" for correct or "0" for incorrect.`,
               }],
-              max_tokens: 5,
             });
             const result = completion.choices[0]?.message?.content?.trim();
             correctnessScore = result === '1' ? 1 : 0;
@@ -713,7 +705,7 @@ router.post('/assignments/:classId/:assignmentId/submit', requireStudentAuth, as
         [studentId, assignmentId, attemptNumber]
       );
 
-      if (groq && transcriptRes.rows.length > 0) {
+      if (llm && transcriptRes.rows.length > 0) {
         const transcriptText = transcriptRes.rows
           .map((r) => `${String(r.role || 'unknown').toUpperCase()}: ${String(r.content || '')}`)
           .join('\n');
@@ -732,10 +724,9 @@ Score based on:
 Student assignment transcript:
 ${transcriptText}`;
 
-        const depCompletion = await groq.chat.completions.create({
-          model: GROQ_MODEL,
+        const depCompletion = await llm.chat.completions.create({
+          model: LLM_MODEL,
           messages: [{ role: 'user', content: scoringPrompt }],
-          max_tokens: 8,
         });
         const depText = depCompletion.choices[0]?.message?.content?.trim() || '50';
         aiDependencyScore = clampScore(parseFloat(depText));

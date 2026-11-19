@@ -103,8 +103,8 @@ async function recomputeAssignmentAggregateGrades(
                sar.points_earned,
                CASE WHEN sar.is_correct = 1 THEN COALESCE(aq.max_points, 1) ELSE 0 END
              )
-           )::float AS points_earned_sum,
-           SUM(COALESCE(aq.max_points, 1))::float AS points_possible_sum
+           ) * 1.0 AS points_earned_sum,
+           SUM(COALESCE(aq.max_points, 1)) * 1.0 AS points_possible_sum
          FROM student_assignment_responses sar
          JOIN assignment_questions aq ON aq.question_id = sar.question_id
          WHERE assignment_id = $1 AND student_id = $2
@@ -434,7 +434,7 @@ router.post('/:classId/students/add-new', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 12);
     const insertedRes = await query(
       `INSERT INTO students (first_name, last_name, email, username, password_hash, date_of_birth)
-       VALUES ($1, $2, $3, $4, $5, $6::date)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING student_id, first_name, last_name, email, username`,
       [firstName, lastName, email, username, passwordHash, dateOfBirth]
     );
@@ -1408,14 +1408,18 @@ router.get('/:classId/metrics/students', async (req, res) => {
     );
 
     const metricsRes = await query(
-      `SELECT DISTINCT ON (sm.student_id)
-         sm.student_id,
-         sm.accuracy_score,
-         sm.ai_dependency_score,
-         sm.understanding_score
-       FROM student_metrics sm
-       WHERE sm.class_id = $1
-       ORDER BY sm.student_id, sm.week_start_date DESC NULLS LAST, sm.week_number DESC`,
+      `SELECT student_id, accuracy_score, ai_dependency_score, understanding_score
+       FROM (
+         SELECT sm.student_id, sm.accuracy_score, sm.ai_dependency_score, sm.understanding_score,
+           ROW_NUMBER() OVER (
+             PARTITION BY sm.student_id
+             ORDER BY sm.week_start_date DESC NULLS LAST, sm.week_number DESC
+           ) AS rn
+         FROM student_metrics sm
+         WHERE sm.class_id = $1
+       ) latest
+       WHERE rn = 1
+       ORDER BY student_id`,
       [classId]
     );
 

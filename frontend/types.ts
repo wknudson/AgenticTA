@@ -18,7 +18,9 @@ export type ViewState =
   | 'ADMIN_CLASS_SELECT'
   | 'ADMIN_CLASS_DETAIL'
   | 'ADMIN_GLOBAL_METRICS'
-  | 'ADMIN_ADD_TEACHER';
+  | 'ADMIN_ADD_TEACHER'
+  /** Agent panels; the list lives in components/agents/registry.tsx */
+  | `AGENT_${string}`;
 
 /** Class/course from API (teacher's taught classes) */
 export interface ClassSummary {

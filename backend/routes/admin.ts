@@ -59,23 +59,23 @@ function buildClassDimensionFilters(
   let p = startParam;
 
   if (exclude !== 'subject' && f.subjectCodes.length > 0) {
-    parts.push(`s.subject_code = ANY($${p++}::text[])`);
+    parts.push(`s.subject_code IN (SELECT value FROM json_each($${p++}))`);
     params.push(f.subjectCodes);
   }
   if (exclude !== 'semester' && f.semesters.length > 0) {
-    parts.push(`COALESCE(c.semester, '') = ANY($${p++}::text[])`);
+    parts.push(`COALESCE(c.semester, '') IN (SELECT value FROM json_each($${p++}))`);
     params.push(f.semesters);
   }
   if (exclude !== 'period' && f.periods.length > 0) {
-    parts.push(`COALESCE(c.period, '') = ANY($${p++}::text[])`);
+    parts.push(`COALESCE(c.period, '') IN (SELECT value FROM json_each($${p++}))`);
     params.push(f.periods);
   }
   if (exclude !== 'teacher' && f.teacherIds.length > 0) {
-    parts.push(`c.teacher_id = ANY($${p++}::int[])`);
+    parts.push(`c.teacher_id IN (SELECT value FROM json_each($${p++}))`);
     params.push(f.teacherIds);
   }
 
-  const sql = parts.length ? parts.join(' AND ') : 'TRUE';
+  const sql = parts.length ? parts.join(' AND ') : '1 = 1';
   return { sql, params, nextParam: p };
 }
 
@@ -85,22 +85,22 @@ function buildGlobalMetricsClassFilters(f: AdminMultiFilters, startParam: number
   const params: unknown[] = [];
   let p = startParam;
   if (f.subjectCodes.length > 0) {
-    parts.push(`s.subject_code = ANY($${p++}::text[])`);
+    parts.push(`s.subject_code IN (SELECT value FROM json_each($${p++}))`);
     params.push(f.subjectCodes);
   }
   if (f.semesters.length > 0) {
-    parts.push(`COALESCE(c.semester, '') = ANY($${p++}::text[])`);
+    parts.push(`COALESCE(c.semester, '') IN (SELECT value FROM json_each($${p++}))`);
     params.push(f.semesters);
   }
   if (f.periods.length > 0) {
-    parts.push(`COALESCE(c.period, '') = ANY($${p++}::text[])`);
+    parts.push(`COALESCE(c.period, '') IN (SELECT value FROM json_each($${p++}))`);
     params.push(f.periods);
   }
   if (f.teacherIds.length > 0) {
-    parts.push(`c.teacher_id = ANY($${p++}::int[])`);
+    parts.push(`c.teacher_id IN (SELECT value FROM json_each($${p++}))`);
     params.push(f.teacherIds);
   }
-  const sql = parts.length ? parts.join(' AND ') : 'TRUE';
+  const sql = parts.length ? parts.join(' AND ') : '1 = 1';
   return { sql, params, nextParam: p };
 }
 
@@ -375,14 +375,18 @@ router.get('/classes/:classId/metrics/students', async (req: express.Request, re
     );
 
     const metricsRes = await query(
-      `SELECT DISTINCT ON (sm.student_id)
-         sm.student_id,
-         sm.accuracy_score,
-         sm.ai_dependency_score,
-         sm.understanding_score
-       FROM student_metrics sm
-       WHERE sm.class_id = $1
-       ORDER BY sm.student_id, sm.week_start_date DESC NULLS LAST, sm.week_number DESC`,
+      `SELECT student_id, accuracy_score, ai_dependency_score, understanding_score
+       FROM (
+         SELECT sm.student_id, sm.accuracy_score, sm.ai_dependency_score, sm.understanding_score,
+           ROW_NUMBER() OVER (
+             PARTITION BY sm.student_id
+             ORDER BY sm.week_start_date DESC NULLS LAST, sm.week_number DESC
+           ) AS rn
+         FROM student_metrics sm
+         WHERE sm.class_id = $1
+       ) latest
+       WHERE rn = 1
+       ORDER BY student_id`,
       [classId]
     );
 

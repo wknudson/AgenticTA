@@ -32,3 +32,10 @@ agent-transcripts/
 
 # Frontend build output (if not already covered)
 frontend/dist/
+# AgenticTA: local data (SQLite DBs, uploaded files) and Python env
+data/
+agents/.venv/
+__pycache__/
+.pytest_cache/
+*.sqlite-wal
+*.sqlite-shm

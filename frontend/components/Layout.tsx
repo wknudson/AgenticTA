@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown } from './Icons';
 import { ViewState, ClassSummary } from '../types';
 import { COLORS } from '../constants';
+import { AGENT_TABS } from './agents/registry';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -147,6 +148,22 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewChange, on
             >
               Metrics
             </button>
+            {/* Agent panels (components/agents/registry.tsx) */}
+            <span className="mx-2 my-1 w-px bg-gray-300" aria-hidden="true" />
+            {AGENT_TABS.map((tab) => (
+              <button
+                key={tab.view}
+                type="button"
+                onClick={() => onViewChange(tab.view)}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
+                  currentView === tab.view
+                    ? 'bg-white text-black shadow-sm border border-gray-200'
+                    : 'text-gray-600 hover:text-black hover:bg-white/70'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </nav>
         )}
       </div>
