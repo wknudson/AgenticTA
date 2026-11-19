@@ -4,8 +4,10 @@
     with agent_trace("scheduler"):
         graph.invoke(...)          # every LLM call, tool call and middleware step is traced
 
-Tracing turns on when .env has LANGSMITH_TRACING=true and LANGSMITH_API_KEY.  Without
-them the code runs the same and simply sends nothing.
+LangSmith is configured once for the whole project, in the project .env
+(LANGSMITH_TRACING=true, LANGSMITH_API_KEY, LANGSMITH_ENDPOINT).  Without them the code
+runs the same and simply sends nothing.  An agent's own .env may set LANGSMITH_PROJECT to
+send just that agent's traces somewhere else (e.g. while experimenting).
 """
 from __future__ import annotations
 
@@ -14,19 +16,18 @@ from typing import Iterator
 
 import langsmith
 
-from .settings import config, key_status
+from .settings import agent_env, config, langsmith_enabled
 
 
 def project_name(agent: str) -> str:
-    return f"{config().get('langsmith_project_prefix', 'agentic-ta')}-{agent}"
+    return agent_env(agent).get("LANGSMITH_PROJECT") or f"{config().get('langsmith_project_prefix', 'agentic-ta')}-{agent}"
 
 
 @contextmanager
 def agent_trace(agent: str, **metadata: object) -> Iterator[None]:
-    enabled = key_status()["langsmith"]
     with langsmith.tracing_context(
         project_name=project_name(agent),
-        enabled=enabled,
+        enabled=langsmith_enabled(),
         tags=[f"agent:{agent}"],
         metadata={"agent": agent, **metadata},
     ):

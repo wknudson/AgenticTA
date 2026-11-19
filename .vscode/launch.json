@@ -1,0 +1,24 @@
+{
+  // Node side.  The Python configs live in agents/.vscode/launch.json, and the
+  // "Full stack (debug)" compound that starts everything is in AgenticTA.code-workspace.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Express API",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeArgs": ["--import", "tsx"],
+      "program": "${workspaceFolder}/backend/server.ts",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    },
+    {
+      "name": "Frontend (Vite)",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "command": "npm run dev:frontend"
+    }
+  ]
+}

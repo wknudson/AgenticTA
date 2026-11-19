@@ -11,15 +11,16 @@ from fastapi import APIRouter
 from langsmith import traceable
 
 from .llm import MissingApiKey, model_spec
-from .settings import agent_config, key_status
+from .settings import agent_config, agent_env_path, has_provider_key, langsmith_enabled
 from .tracing import agent_trace, project_name
 
 
 def agent_info(agent: str) -> dict[str, Any]:
     cfg = agent_config(agent)
-    keys = key_status()
-    models = {role: {**spec, "key_set": keys.get(spec["provider"], False)}
-              for role, spec in cfg.get("models", {}).items()}
+    models = {}
+    for role in cfg.get("models", {}):
+        spec = model_spec(agent, role)  # includes the agent's MODEL_<ROLE> override, if any
+        models[role] = {**spec, "key_set": has_provider_key(agent, spec["provider"])}
     return {
         "name": agent,
         "title": cfg.get("title", agent),
@@ -28,6 +29,7 @@ def agent_info(agent: str) -> dict[str, Any]:
         "pattern": cfg.get("pattern"),
         "models": models,
         "ready": all(m["key_set"] for m in models.values()),
+        "env_file": agent_env_path(agent).is_file(),
         "langsmith_project": project_name(agent),
     }
 
@@ -47,14 +49,16 @@ def make_router(agent: str) -> APIRouter:
     def ping() -> dict[str, Any]:
         with agent_trace(agent):
             out = _ping()
-        return {**out, "traced_to": project_name(agent) if key_status()["langsmith"] else None}
+        return {**out, "traced_to": project_name(agent) if langsmith_enabled() else None}
 
     return router
 
 
 def require_models(agent: str, *roles: str) -> None:
     """Raise MissingApiKey early (-> HTTP 503) if a role's provider has no key."""
-    keys = key_status()
-    missing = [r for r in (roles or ("main",)) if not keys.get(model_spec(agent, r)["provider"], False)]
+    missing = [r for r in (roles or ("main",)) if not has_provider_key(agent, model_spec(agent, r)["provider"])]
     if missing:
-        raise MissingApiKey(f"{agent}: no API key for role(s) {missing}. Add the key to .env or use the offline demo.")
+        raise MissingApiKey(
+            f"{agent}: no API key for role(s) {missing}. Add it to agents/app/agents/{agent}/.env "
+            "(or the project .env), or use the offline demo."
+        )

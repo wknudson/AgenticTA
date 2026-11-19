@@ -54,7 +54,7 @@ def health() -> dict[str, Any]:
     return {
         "status": "ok",
         "db_path": str(DB_PATH),
-        "keys": key_status(),
+        "keys": key_status(),  # project .env only; each agent's "models" shows its own keys
         "agents": [agent_info(a) for a in AGENTS],
     }
 

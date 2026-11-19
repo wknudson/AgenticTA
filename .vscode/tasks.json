@@ -1,0 +1,49 @@
+{
+  // Terminal > Run Task... (or Ctrl+Shift+P > "Tasks: Run Task")
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "dev: run everything",
+      "detail": "Vite + Express + agents service (npm run dev)",
+      "type": "shell",
+      "command": "npm run dev",
+      "isBackground": true,
+      "problemMatcher": [],
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "setup: first time",
+      "detail": "npm install, create .env files, create the database, install Python packages",
+      "type": "shell",
+      "command": "npm run setup",
+      "problemMatcher": []
+    },
+    {
+      "label": "env: create / check .env files",
+      "detail": "Creates missing .env files and shows which keys are blank (never prints values)",
+      "type": "shell",
+      "command": "npm run env",
+      "problemMatcher": []
+    },
+    {
+      "label": "test: agents",
+      "type": "shell",
+      "command": "npm run test:agents",
+      "problemMatcher": [],
+      "group": { "kind": "test", "isDefault": true }
+    },
+    {
+      "label": "check: typescript",
+      "type": "shell",
+      "command": "npm run typecheck",
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "db: reset",
+      "detail": "Deletes the local database, agent state and uploaded files, then recreates seed data",
+      "type": "shell",
+      "command": "npm run db:reset",
+      "problemMatcher": []
+    }
+  ]
+}

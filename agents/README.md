@@ -4,9 +4,11 @@ FastAPI + LangChain v1 (`create_agent`, middleware) + LangGraph, traced in LangS
 
 ```
 agents/
-  config.yaml                 provider + model per agent role (change models here)
+  config.yaml                 provider + model per agent role (the shared, committed choice)
+  .vscode/                    Python debug configs + test settings (open ../AgenticTA.code-workspace)
   app/main.py                 mounts every agent at /agents/<name>, plus /agents/health and /agents/approvals
   app/shared/                 the ONLY way agents talk to each other
+    settings.py               project .env + per-agent .env loading (keys never leak between agents)
     library.py                search / get_file / list_files over filed documents   (owner: Will)
     approvals.py              the Approvals inbox                                     (shared)
     hitl.py                   HitlRunner: run a graph, turn HITL pauses into inbox rows, resume on decision
@@ -14,9 +16,19 @@ agents/
     llm.py                    get_model(agent, role); pass script=[...] for an offline scripted model
     tracing.py                agent_trace(agent): one LangSmith project per agent
     db.py, schema.sql         shared tables (library, approvals, agent_runs)
-  app/agents/<name>/          one folder per agent; each has its own README with owner, scope and "done when"
+  app/agents/<name>/          one folder per agent; README (owner, scope, "done when"),
+                              .env.example (that agent's keys), .env (yours, gitignored)
   tests/test_skeleton.py      every offline demo end to end + guardrails
+  tests/test_env.py           per-agent .env scoping, fallback and overrides
 ```
+
+## Settings and keys
+
+- **Project `.env`** (repo root): LangSmith, app settings, and the Express OpenAI key. It's loaded into the process environment.
+- **Agent `.env`** (`app/agents/<name>/.env`): that agent's model keys. It's *not* loaded into the environment, so two agents can use different keys for the same provider. `get_model()` passes the key to the model explicitly.
+- **Lookup order:** the agent `.env`, then the project `.env`.
+- **Personal overrides** in an agent `.env`: `MODEL_<ROLE>=provider:model`, `LANGSMITH_PROJECT=...`, `OLLAMA_BASE_URL=...`.
+- **When you add a model role** to `config.yaml`, add its key to that agent's `.env.example` so teammates know.
 
 ## How the pieces differ (on purpose)
 

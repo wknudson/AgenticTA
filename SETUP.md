@@ -1,4 +1,4 @@
-# AgenticTA: Setup (Windows and Mac)
+# AgenticTA: Setup (Windows and Mac, VS Code)
 
 Setup takes about 10 minutes the first time. You don't need any outside database or server; everything runs on your laptop.
 
@@ -6,6 +6,7 @@ Setup takes about 10 minutes the first time. You don't need any outside database
 
 | Tool | Why | Check |
 |---|---|---|
+| **VS Code** | editor; the repo ships a ready-made workspace | `code --version` |
 | **Node.js 20+** | frontend + Express API | `node --version` |
 | **Python 3.12+** | the agents service | `python --version` (Mac: `python3 --version`) |
 | **uv** | installs and runs the Python side | `pip install uv` (Mac: `pip3 install uv` or `brew install uv`) |
@@ -16,19 +17,49 @@ Setup takes about 10 minutes the first time. You don't need any outside database
 ```bash
 git clone https://github.com/wknudson/AgenticTA.git
 cd AgenticTA
-cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
-npm run setup               # npm install + create the SQLite DB + install Python packages
+npm run setup     # npm install, create every .env file, create the SQLite DB, install Python packages
 ```
 
-Fill in `.env` with whatever API keys you have. **Every agent has an offline demo that needs no key**, so you can start right away. For LangSmith, accept the invite to the team workspace, create an API key there, and set `LANGSMITH_API_KEY`.
+## 3. Open it in VS Code
 
-## 3. Run
+Open **`AgenticTA.code-workspace`**, not the folder. Use **File → Open Workspace from File…**, or run `code AgenticTA.code-workspace`. If you opened the folder instead, VS Code offers to open the workspace; click **Open Workspace**.
 
-```bash
-npm run dev
-```
+- **Extensions:** accept the "install recommended extensions" prompt (Python, Pylance, debugger, Ruff, .env highlighting, YAML/TOML, SQLite viewer).
+- **Two folders:** the sidebar shows **AgenticTA** (everything, including the Node side) and **agents (Python)**. The second one is what lets VS Code use `agents/.venv` and run the tests from the right place.
+- **Python interpreter:** VS Code should pick up `agents/.venv` on its own. If the status bar doesn't show it, press Ctrl/Cmd+Shift+P → **Python: Select Interpreter** → choose the one in `agents/.venv`.
+- **Tests:** in the **Testing** sidebar (beaker icon), click the play button to run all Python tests, or run one test with its play icon.
 
-Open **http://localhost:5173**, log in as a teacher (`sarah_b` / `password123`), and pick a class. The agent tabs are on the right of the class tab bar: **Library, Scheduler, Update materials, Study games, Insights, Approvals**.
+| To… | Do this |
+|---|---|
+| Run everything | Ctrl/Cmd+Shift+B (the default build task, `npm run dev`) |
+| Debug everything with breakpoints | Run and Debug → **Full stack (debug)** |
+| Debug just your agent's API | Run and Debug → **Agents API** |
+| Debug the Python tests | Run and Debug → **Agents tests** |
+| Other jobs (set up, check .env files, reset DB, typecheck) | Ctrl/Cmd+Shift+P → **Tasks: Run Task** |
+| Look inside the database | open `data/agenticta.sqlite` (SQLite viewer extension) |
+
+## 4. Your .env files
+
+There's one project file, plus one file per agent. `npm run setup` creates them all from their `.env.example` templates, and git ignores them, so keys never get committed.
+
+| File | What goes in it |
+|---|---|
+| `.env` (project) | **LangSmith** key (shared team workspace), app settings, and the OpenAI key for the original Express AI features |
+| `agents/app/agents/<agent>/.env` | **your agent's model keys**, and optionally a personal model override |
+
+- **Where your keys go:** only fill in **your own agent's** file. Each template lists exactly the keys that agent's models need.
+- **Fallback:** if an agent's key is blank, it falls back to the same key in the project `.env`. Putting one key there works for everyone.
+- **Experiments:** you can try a different model without touching the shared `agents/config.yaml`. Put `MODEL_<ROLE>=provider:model` in your agent's `.env`, e.g. `MODEL_MAIN=anthropic:claude-sonnet-5-5`. To keep experiment traces separate, set `LANGSMITH_PROJECT=...` there too.
+- **Check your keys:** `npm run env` (task: *env: create / check .env files*) shows which keys are set or missing in every file. It never prints the values.
+- **After editing a `.env`,** restart the agents service.
+
+For LangSmith, accept the invite to the team workspace, create an API key there, and put it in the **project** `.env`.
+
+**Every agent has an offline demo that needs no key**, so you can start before you have any.
+
+## 5. Run
+
+`npm run dev` (or Ctrl/Cmd+Shift+B in VS Code). Open **http://localhost:5173**, log in as a teacher (`sarah_b` / `password123`), and pick a class. The agent tabs are on the right of the class tab bar: **Library, Scheduler, Update materials, Study games, Insights, Approvals**.
 
 Try the whole loop without any API key:
 1. **Library** → *Run offline demo* (files a sample syllabus)
@@ -46,9 +77,10 @@ Try the whole loop without any API key:
 | Command | What it does |
 |---|---|
 | `npm run dev` | start all three processes |
-| `npm run test:agents` | Python tests (offline demos, approvals, guardrails) |
+| `npm run env` | create missing .env files and show which keys are blank |
+| `npm run test:agents` | Python tests (offline demos, approvals, guardrails, env scoping) |
 | `npm run typecheck` | TypeScript checks (one error in `AssignmentQuestionsEditorModal.tsx` predates the agents work) |
-| `npm run db:reset` | delete the database and recreate it from `backend/db/schema.sql` + `seed.sql` |
+| `npm run db:reset` | delete the database, agent state and uploaded files, then recreate the seed data |
 | `npm run db:seed-metrics` | optional: 6 more students + 8 weeks of grades for the metrics pages |
 
 ## Accounts (seed data)
@@ -61,5 +93,7 @@ Try the whole loop without any API key:
 
 - **"The agents service is not running"** in a panel: check the `agents` lines in the `npm run dev` output. Most often `uv` isn't installed, or `npm run setup` wasn't run.
 - **`uv` not found on Windows** after `pip install uv`: that's fine, the npm scripts fall back to `python -m uv`.
-- **A panel shows amber model badges:** that agent's API key isn't in `.env`. The offline demo still works.
+- **A panel shows amber model badges:** that agent's key isn't set. Run `npm run env` to see which file needs it. The offline demo still works.
+- **VS Code says "import could not be resolved"** in Python files: the interpreter isn't `agents/.venv`. Select it (section 3).
+- **Breakpoints aren't hit in the agents:** start them with **Agents API** from Run and Debug, not `npm run dev`. The dev server reloads on save, and that detaches the debugger.
 - **Weird data:** `npm run db:reset` (this wipes your local DB, including filed documents).

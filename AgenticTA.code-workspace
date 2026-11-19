@@ -1,0 +1,56 @@
+{
+  // Open THIS file in VS Code (File > Open Workspace from File...).
+  // Two folders: the whole repo (Node: frontend + Express) and agents/ (Python), so VS Code
+  // picks up agents/.venv as the Python interpreter and runs pytest from the right place.
+  "folders": [
+    { "name": "AgenticTA", "path": "." },
+    { "name": "agents (Python)", "path": "agents" }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/.pytest_cache": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/.venv": true,
+      "data": true,
+      "package-lock.json": true,
+      "agents/uv.lock": true
+    },
+    "files.associations": {
+      "*.env.example": "dotenv",
+      ".env.example": "dotenv"
+    },
+    "python.terminal.activateEnvironment": true,
+    "typescript.tsdk": "node_modules/typescript/lib"
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "ms-python.vscode-pylance",
+      "ms-python.debugpy",
+      "charliermarsh.ruff",
+      "mikestead.dotenv",
+      "redhat.vscode-yaml",
+      "tamasfe.even-better-toml",
+      "qwtel.sqlite-viewer"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [],
+    "compounds": [
+      {
+        // Run and Debug > "Full stack (debug)": breakpoints work in Express, the agents and Vite.
+        "name": "Full stack (debug)",
+        "configurations": [
+          { "name": "Express API", "folder": "AgenticTA" },
+          { "name": "Frontend (Vite)", "folder": "AgenticTA" },
+          { "name": "Agents API", "folder": "agents (Python)" }
+        ],
+        "stopAll": true
+      }
+    ]
+  }
+}

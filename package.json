@@ -7,7 +7,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "setup": "npm install && npm run db:init && npm run setup:agents",
+    "setup": "npm install && npm run env && npm run db:init && npm run setup:agents",
     "setup:agents": "cd agents && node ../scripts/uv.mjs sync",
     "dev": "node scripts/dev.mjs",
     "dev:backend": "tsx watch backend/server.ts",
@@ -20,7 +20,8 @@
     "db:reset": "node --import tsx backend/db/init-db.ts --reset",
     "db:seed-metrics": "node --import tsx backend/db/seed-metrics.ts",
     "typecheck": "tsc -p backend/tsconfig.json --noEmit && tsc -p frontend/tsconfig.json --noEmit",
-    "test:agents": "cd agents && node ../scripts/uv.mjs run pytest -q"
+    "test:agents": "cd agents && node ../scripts/uv.mjs run pytest -q",
+    "env": "node scripts/init-env.mjs"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
