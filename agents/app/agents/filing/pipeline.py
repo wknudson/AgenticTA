@@ -129,8 +129,12 @@ def _ai_header(aictx: dict) -> str:
         "You are filing a teacher's class documents.\n"
         f"Class: {ctx.get('class_name', '?')} ({ctx.get('subject', '?')}), term: {ctx.get('semester', '?')}. "
         f"Today is {date.today().isoformat()}; resolve dates without a year to this school year.\n"
-        f"Units (use one of these names EXACTLY, or null for course-wide documents): {aictx['units'] or 'none known yet'}\n"
     )
+    if aictx["units"]:
+        head += f"Units (use one of these names EXACTLY, or null for course-wide documents): {aictx['units']}\n"
+    else:  # no syllabus yet: still keep the unit number when the document states it
+        head += ("No unit list is known yet. If the document itself names its unit (e.g. 'UNIT 3 QUIZ'), "
+                 "set unit to 'Unit N' with that number; otherwise null.\n")
     if aictx["outline"]:
         head += ("Course outline from the syllabus (pick the unit from the document's TOPIC even when it "
                  f"doesn't name its unit):\n<<<\n{aictx['outline']}\n>>>\n")

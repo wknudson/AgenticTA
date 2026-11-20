@@ -19,6 +19,8 @@ for _var in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY"):
     os.environ[_var] = ""
 # Offline, deterministic embeddings (hashing, not semantic) so search plumbing is testable.
 os.environ["AGENTICTA_EMBEDDINGS"] = "fake"
+# Fake embeddings aren't semantic, so the real similarity cutoff (config.yaml) would drop everything.
+os.environ["AGENTICTA_MIN_SIMILARITY"] = "0"
 # No background AI-queue thread: tests drive ai_queue.process_pending() themselves.
 os.environ["AGENTICTA_AI_QUEUE_WORKER"] = "0"
 

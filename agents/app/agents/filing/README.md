@@ -59,7 +59,13 @@ We first tried `gemini-3.8-flash`, but it was overloaded (504s, about 200 s per 
 - **semantic:** sqlite-vec cosine nearest neighbors over Gemini embeddings. Best for paraphrases.
 - **hybrid** (default): both, merged with Reciprocal Rank Fusion, `score = Σ 1/(60 + rank)` (Module 4).
 
-On the 25 test questions, semantic search put the right file first **96%** of the time vs **76%** for keyword (93% vs 67% on paraphrases). Hybrid scored 88%: tuning the fusion is a good next experiment.
+On the 25 test questions, semantic search put the right file first **96%** of the time vs **76%** for keyword (93% vs 67% on paraphrases). Hybrid scored 88% for the top hit, but 100% within the top 5.
+
+**"No matches" instead of random files:** nearest-neighbor search always returns *something*, so a question about another class used to get unrelated files back. Now:
+- **Cutoff:** meaning-based hits below `filing.search.min_similarity` (**0.63**, in config.yaml) are dropped.
+- **Stopwords:** common words ("how", "the", "make"...) no longer count as keyword matches.
+- **Measured:** 12 off-topic questions asked in the wrong class return nothing in meaning mode, while every test question with a real answer still finds it. A 0.65 cutoff was tried first; it dropped "no school around the holidays" (the calendar scored 0.645), so it's 0.63. See `evals/results/filing_eval_20261120-1222.md`.
+- **Re-measure** if the embedding model changes.
 
 ## Guardrails (deterministic, on every label, whoever made it)
 
