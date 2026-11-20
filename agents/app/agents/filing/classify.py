@@ -230,21 +230,29 @@ def fast_labels(class_id: int, filename: str, text: str, vectors: list[list[floa
 
 @traceable(name="filing.resort_units")
 def resort_units(class_id: int) -> int:
-    """After a syllabus is filed: place earlier auto-labeled files into units using their STORED
-    vectors (no API calls).  Returns how many files moved."""
+    """After a syllabus is filed: place files that were filed BEFORE it into units, using the unit
+    number they state or their STORED vectors (no API calls).  Returns how many files moved.
+
+    Covers auto-labeled files, and AI-labeled ones the AI couldn't place because no unit list
+    existed yet (unit empty or a bare 'Unit 3').  Teacher labels and AI files that already
+    have a full unit name are left alone."""
     catalog = unit_catalog(class_id)
     if not catalog:
         return 0
     with connect() as conn:
         rows = conn.execute(
             """SELECT file_id, original_name, title, doc_type, unit FROM library_files
-               WHERE class_id = ? AND label_source IN ('auto', 'heuristic') AND ai_pending = 0
-                     AND status NOT IN ('archived', 'draft') AND doc_type NOT IN ('syllabus', 'schedule')""",
+               WHERE class_id = ? AND ai_pending = 0 AND status NOT IN ('archived', 'draft')
+                     AND doc_type NOT IN ('syllabus', 'schedule')
+                     AND (label_source IN ('auto', 'heuristic')
+                          OR (label_source IN ('llm', 'llm-fallback') AND (unit IS NULL OR unit NOT LIKE '%:%')))""",
             (class_id,),
         ).fetchall()
     moved = 0
     for r in rows:
-        n = _unit_number(f"{r['original_name']} {r['title'] or ''}")
+        if re.search(ADMIN, _pretty_name(r["original_name"]).lower()):
+            continue  # paperwork stays course-wide
+        n = _unit_number(f"{r['original_name']} {r['title'] or ''} {r['unit'] or ''}")
         new = next((u for u in catalog if _unit_number(u) == n), None) if n else None
         if new is None:
             vec = _mean(library.file_vectors(r["file_id"]))

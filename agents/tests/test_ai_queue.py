@@ -153,3 +153,29 @@ def test_paperwork_is_course_wide_even_with_lab_in_the_name(algebra):
 ])
 def test_extract_dates(line, want):
     assert [(d["date"], d["label"]) for d in classify.extract_dates(line)] == want
+
+
+def test_scan_filed_before_the_syllabus_gets_its_unit_when_the_syllabus_arrives(monkeypatch):
+    """Found while testing by hand: a drag-and-drop put the scanned quiz ahead of the syllabus, so
+    the AI had no unit list and answered null.  The syllabus arriving must fix it (no AI call)."""
+    quota._blocked_until.clear()
+    llm = FakeLLM()
+    real = llm.with_structured_output
+
+    def no_unit(schema):  # the AI couldn't know the units yet
+        runner = real(schema)
+        if schema is pipeline.VisionResult:
+            inner = runner.invoke
+            runner.invoke = lambda inp: (lambda r: (setattr(r.labels, "unit", None), r)[1])(inner(inp))
+        return runner
+    llm.with_structured_output = no_unit
+    monkeypatch.setattr(pipeline, "_labeler_chain", lambda: [("labeler", "fake-flash", llm)])
+
+    fresh_class = 5
+    scan = pipeline.ingest(fresh_class, "Unit3_Quiz_Quadratics_SCANNED.pdf",
+                           (MATERIALS / "algebra2" / "Unit3_Quiz_Quadratics_SCANNED.pdf").read_bytes())
+    assert scan["label_source"] == "llm" and scan["unit"] is None
+    pipeline.ingest(fresh_class, "Algebra2_Syllabus_Fall2026.docx",
+                    (MATERIALS / "algebra2" / "Algebra2_Syllabus_Fall2026.docx").read_bytes())
+    assert library.get_file(scan["file_id"]).unit == "Unit 3: Quadratic Functions"
+    assert llm.requests == 1, "the re-sort itself costs no AI calls"

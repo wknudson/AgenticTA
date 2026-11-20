@@ -18,8 +18,11 @@ const UploadZone: React.FC<{ classId: number; onFiled: () => void }> = ({ classI
   const input = useRef<HTMLInputElement>(null);
   const busy = rows.some((r) => r.state === 'waiting' || r.state === 'filing');
 
-  const run = async (files: File[]) => {
-    if (!files.length) return;
+  const run = async (dropped: File[]) => {
+    if (!dropped.length) return;
+    // Syllabus/calendar first: they define the class's units, which every other file is sorted into.
+    const outlineFirst = (f: File) => (/syllabus|calendar|schedule|pacing/i.test(f.name) ? 0 : 1);
+    const files = [...dropped].sort((a, b) => outlineFirst(a) - outlineFirst(b));
     const start = rows.length;
     setRows((r) => [...r, ...files.map((f) => ({ name: f.name, state: 'waiting' as const }))]);
     for (let i = 0; i < files.length; i++) {
