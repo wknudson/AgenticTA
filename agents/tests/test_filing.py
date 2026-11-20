@@ -59,6 +59,18 @@ def test_keyword_search_finds_exact_terms(client, filed):
     assert hits["results"][0]["file_id"] == filed["Enzyme_Lab_Toothpickase.pdf"]["file_id"]
 
 
+def test_similarity_cutoff_turns_weak_matches_into_no_results(filed, monkeypatch):
+    assert library.search("Calvin cycle stroma", BIO, mode="semantic"), "no cutoff: nearest chunks come back"
+    monkeypatch.setenv("AGENTICTA_MIN_SIMILARITY", "1.01")  # nothing can be that close
+    assert library.search("Calvin cycle stroma", BIO, mode="semantic") == []
+    assert library.search("Calvin cycle stroma", BIO, mode="hybrid"), "keyword hits still count in hybrid"
+
+
+def test_stopwords_dont_match_everything():
+    assert library._fts_query("how do I make the computer repeat something") == '"computer" OR "repeat"'
+    assert library._fts_query("how is the") is None
+
+
 def test_hybrid_search_fuses_both_retrievers(client, filed):
     res = client.get("/agents/filing/search", params={"class_id": BIO, "q": "Calvin cycle stroma"}).json()
     assert res["mode"] == "hybrid"

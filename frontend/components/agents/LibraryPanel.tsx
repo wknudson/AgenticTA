@@ -245,7 +245,11 @@ const LibraryPanel: React.FC<AgentPanelProps> = ({ classId }) => {
               <p className="text-xs text-amber-700">No embedding key, so this used keyword search.</p>
             )}
             {results && (
-              results.hits.length === 0 ? <p className="text-sm text-gray-600">No matches.</p> : (
+              results.hits.length === 0 ? (
+                <p className="text-sm text-gray-600">
+                  Nothing in this class's library matches that closely. Try other words, or check you're in the right class.
+                </p>
+              ) : (
                 <ul className="space-y-2">
                   {results.hits.map((h) => (
                     <li key={h.chunk_id}>

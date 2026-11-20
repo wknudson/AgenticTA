@@ -20,6 +20,7 @@ afterwards so they become semantically searchable too (keyword search updates au
 from __future__ import annotations
 
 import json
+import os
 import re
 import struct
 from dataclasses import asdict, dataclass, field
@@ -29,6 +30,7 @@ from langsmith import traceable
 
 from .db import connect
 from .embeddings import embedding_spec, get_embedder
+from .settings import agent_config
 
 RRF_K = 60
 SearchMode = Literal["hybrid", "keyword", "semantic"]
@@ -310,9 +312,24 @@ def _filters(doc_type: str | None, unit: str | None) -> tuple[str, list[Any]]:
     return sql, params
 
 
+# Words too common to mean anything in a keyword search ("how do I ..." matched nearly every file).
+STOPWORDS = frozenset("""a an and are as at be but by can do does for from how i if in into is it its me my of on or
+so that the their them then there these this to was what when where which who why will with you your about
+should would could did get got make makes made something thing things""".split())
+
+
 def _fts_query(q: str) -> str | None:
-    terms = [t for t in re.findall(r"[A-Za-z0-9]+", q) if len(t) > 1]
+    terms = [t for t in re.findall(r"[A-Za-z0-9]+", q) if len(t) > 1 and t.lower() not in STOPWORDS]
     return " OR ".join(f'"{t}"' for t in terms) or None
+
+
+def min_similarity() -> float:
+    """Meaning-based hits below this are dropped (config.yaml -> filing.search.min_similarity).
+    AGENTICTA_MIN_SIMILARITY overrides it (tests use fake, non-semantic embeddings)."""
+    env = os.getenv("AGENTICTA_MIN_SIMILARITY")
+    if env is not None:
+        return float(env)
+    return float(agent_config("filing").get("search", {}).get("min_similarity", 0.0))
 
 
 @traceable(name="library.keyword_search", run_type="retriever")
@@ -352,7 +369,8 @@ def _semantic(q: str, class_id: int, n: int, doc_type: str | None, unit: str | N
                 ORDER BY knn.distance LIMIT ?""",
             (qv, n * 3, class_id, *params, n),  # over-fetch: some hits are archived/drafts
         ).fetchall()
-    return [dict(r) for r in rows]
+    floor = min_similarity()  # nearest neighbors always exist; only keep ones that are actually close
+    return [dict(r) for r in rows if 1.0 - r["distance"] >= floor]
 
 
 def _to_chunk(r: dict[str, Any], score: float, match: str) -> Chunk:
