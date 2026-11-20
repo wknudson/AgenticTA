@@ -130,7 +130,7 @@ router.post('/chat', async (req: express.Request, res: express.Response) => {
       );
     }
 
-    const systemContent = `You are a helpful AI Tutor in the Lyrning LMS.
+    const systemContent = `You are a helpful AI Tutor in AgenticTA.
   You must strictly follow the teacher's restrictions exactly. If a student asks for something that violates those restrictions, refuse and provide only the level of help allowed.
   If the student's message is essentially the same as, or a near-verbatim copy of, an assignment question (even without saying "answer this"), do not solve it or give the answer — redirect them to conceptual help like you would for a blocked direct-answer request.
   Teacher's specific restrictions: ${instructions || "Don't give the student the full answer directly. Guide them with hints and examples."}
