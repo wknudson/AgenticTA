@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Approval, decideApproval, listApprovals } from '../../services/agentsApi';
+import PublishPreview from './calendar/PublishPreview';
 
 /**
  * The teacher's Approvals inbox (Module 10: HITL approval dashboard).
@@ -108,6 +109,14 @@ const ApprovalsInbox: React.FC<{ classId: number }> = ({ classId }) => {
               rows={8}
               className="mt-3 w-full font-mono text-xs border border-gray-300 rounded-lg p-2"
             />
+          ) : a.action_name === 'publish_calendar' && Array.isArray(a.action_args.event_ids) ? (
+            <>
+              <PublishPreview classId={classId} eventIds={a.action_args.event_ids as number[]} />
+              <details className="mt-2 text-xs text-gray-500">
+                <summary className="cursor-pointer">Raw request</summary>
+                <pre className="mt-1 bg-gray-50 border border-gray-200 rounded-lg p-3 overflow-x-auto">{JSON.stringify(a.action_args, null, 2)}</pre>
+              </details>
+            </>
           ) : (
             <pre className="mt-3 text-xs bg-gray-50 border border-gray-200 rounded-lg p-3 overflow-x-auto">
               {JSON.stringify(a.action_args, null, 2)}
