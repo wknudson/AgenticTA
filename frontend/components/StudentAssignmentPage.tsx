@@ -5,6 +5,7 @@ import {
   type StudentAssignmentPayload,
 } from '../services/api';
 import { chatWithTutor } from '../services/aiService';
+import StudentCalendar from './agents/StudentCalendar';
 
 const STUDENT_SESSION_KEY = 'lyrning_student_session';
 
@@ -226,6 +227,7 @@ const StudentAssignmentPage: React.FC<StudentAssignmentPageProps> = ({ classId, 
       </div>
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
         <div className="space-y-6">
+        <StudentCalendar classId={classId} />
         <div className="bg-white border border-gray-200 rounded-2xl p-6">
           <h1 className="text-2xl font-bold text-gray-900">{assignment.assignmentName}</h1>
           {assignment.description && <p className="text-gray-700 mt-2">{assignment.description}</p>}

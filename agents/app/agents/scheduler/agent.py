@@ -8,6 +8,8 @@ Middleware stack (Module 10), outermost first:
 from __future__ import annotations
 
 from typing import Sequence
+from datetime import date, timedelta
+import json
 
 from langchain.agents import create_agent
 from langchain.agents.middleware import HumanInTheLoopMiddleware, ToolCallLimitMiddleware
@@ -19,6 +21,8 @@ from app.shared.llm import get_model
 
 from .prompts import SYSTEM_PROMPT
 from .tools import TOOLS
+from .tools import check_conflicts, propose_events
+from .calendar import load_term, save_term, TermSettings
 
 
 def build_agent(script: Sequence[AIMessage] | None = None):
@@ -49,14 +53,24 @@ runner = HitlRunner("scheduler", build_agent)
 
 def demo_script(class_id: int) -> list[AIMessage]:
     """What a real model would do, scripted, so the offline demo needs no API key."""
-    events = [
-        {"title": "Unit 3 quiz", "date": "2026-12-03", "kind": "assessment", "source": "demo"},
-        {"title": "Lab report due", "date": "2026-12-05", "kind": "assignment_due", "source": "demo"},
-    ]
+    term = load_term(class_id)
+    if term is None:
+        term = save_term(class_id, TermSettings(term_start="2026-08-24", term_end="2026-12-18"))
+    events = []
+    # Keep the demo useful when a teacher runs it partway through the term.
+    day = max(date.fromisoformat(term["term_start"]), date.today())
+    while len(events) < 2 and day <= date.fromisoformat(term["term_end"]):
+        event = {"title": "Demo quiz" if not events else "Demo lab report",
+                 "date": day.isoformat(), "kind": "assessment", "source": "offline demo (synthetic)"}
+        if json.loads(check_conflicts.invoke({"class_id": class_id, "events": [event]}))["ok"]:
+            events.append(event)
+        day += timedelta(days=1)
+    if len(events) < 2:
+        raise ValueError("The demo needs two available school days in the configured term.")
+    ids = json.loads(propose_events.invoke({"class_id": class_id, "events": events}))["proposed_event_ids"]
     return [
         AIMessage("", tool_calls=[{"name": "get_assignments", "args": {"class_id": class_id}, "id": "c1"}]),
         AIMessage("", tool_calls=[{"name": "check_conflicts", "args": {"class_id": class_id, "events": events}, "id": "c2"}]),
-        AIMessage("", tool_calls=[{"name": "propose_events", "args": {"class_id": class_id, "events": events}, "id": "c3"}]),
-        AIMessage("", tool_calls=[{"name": "publish_calendar", "args": {"class_id": class_id, "event_ids": []}, "id": "c4"}]),
+        AIMessage("", tool_calls=[{"name": "publish_calendar", "args": {"class_id": class_id, "event_ids": ids}, "id": "c4"}]),
         AIMessage("Offline demo finished: 2 events went through the approval step."),
     ]

@@ -1,0 +1,14 @@
+Biology Honors — Unit 3: Cells
+Sample syllabus for testing the scheduler and filing date extraction.
+
+Term dates: 2026-09-01 through 2026-12-18
+School holiday: 2026-11-26 — Thanksgiving break (no classes)
+
+Important dates:
+2026-11-24 — Unit 3 quiz: cell structure and organelles
+2026-12-03 — Unit 3 exam: cell structure and organelles
+2026-12-03 — Microscopy lab report due
+2026-12-10 — Unit 4 project proposal due
+
+The two items on 2026-12-03 are intentional: configure a maximum of one assessment or
+assignment due date per day to confirm that the scheduler flags the conflict.

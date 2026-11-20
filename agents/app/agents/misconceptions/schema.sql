@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS misconception_insights (
     topic          TEXT NOT NULL,          -- "Confuses mitosis with meiosis"
     evidence_count INTEGER NOT NULL,       -- how many (redacted) questions support it
     examples_json  TEXT NOT NULL,          -- a few REDACTED example questions
-    suggestion     TEXT,                   -- e.g. "Make a review game on cell division"
+    suggestion     TEXT,                   -- JSON: explanation, material_update, reteaching_activity
     model_used     TEXT,                   -- ollama:phi3 vs anthropic:... (for the comparison)
     status         TEXT NOT NULL DEFAULT 'new', -- new | sent_to_games | sent_to_materials | dismissed
     created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
