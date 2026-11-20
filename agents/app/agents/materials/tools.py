@@ -66,6 +66,7 @@ def apply_revision(draft_file_id: int) -> str:
         root = d["version_of"]
         conn.execute("UPDATE library_files SET status = 'archived' WHERE (file_id = ? OR version_of = ?) AND status IN ('filed','needs_review')", (root, root))
         conn.execute("UPDATE library_files SET status = 'filed' WHERE file_id = ?", (draft_file_id,))
+    library.index_file(draft_file_id)  # make the new version semantically searchable (keyword is automatic)
     return json.dumps({"applied": draft_file_id})
 
 

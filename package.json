@@ -21,7 +21,9 @@
     "db:seed-metrics": "node --import tsx backend/db/seed-metrics.ts",
     "typecheck": "tsc -p backend/tsconfig.json --noEmit && tsc -p frontend/tsconfig.json --noEmit",
     "test:agents": "cd agents && node ../scripts/uv.mjs run pytest -q",
-    "env": "node scripts/init-env.mjs"
+    "env": "node scripts/init-env.mjs",
+    "sample-course": "cd agents && node ../scripts/uv.mjs run python sample_data/build_sample_course.py",
+    "eval:filing": "cd agents && node ../scripts/uv.mjs run python evals/filing_eval.py"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

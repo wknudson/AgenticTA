@@ -6,6 +6,10 @@ interface Props {
   classId: number;
   /** Called after the demo/run finishes so the panel can refresh its own data. */
   onRunComplete?: () => void;
+  /** Demo button text (default "Run offline demo"). */
+  demoLabel?: string;
+  /** Turn the demo's JSON result into one friendly line instead of showing raw JSON. */
+  summarizeResult?: (result: RunResult) => string;
   children?: React.ReactNode;
 }
 
@@ -14,7 +18,7 @@ interface Props {
  * models it uses (and whether their keys are set), its LangSmith project, and an
  * offline demo button.  Panels put their own UI in `children`.
  */
-const AgentPanelShell: React.FC<Props> = ({ agent, classId, onRunComplete, children }) => {
+const AgentPanelShell: React.FC<Props> = ({ agent, classId, onRunComplete, demoLabel, summarizeResult, children }) => {
   const [info, setInfo] = useState<AgentInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
@@ -56,7 +60,7 @@ const AgentPanelShell: React.FC<Props> = ({ agent, classId, onRunComplete, child
             disabled={running || (!!error && !info)}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-black text-white hover:bg-gray-800 disabled:opacity-50"
           >
-            {running ? 'Running…' : 'Run offline demo'}
+            {running ? 'Running…' : demoLabel ?? 'Run offline demo'}
           </button>
         </div>
         {info && (
@@ -76,7 +80,8 @@ const AgentPanelShell: React.FC<Props> = ({ agent, classId, onRunComplete, child
           </div>
         )}
         {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
-        {result && (
+        {result && summarizeResult && <p className="mt-3 text-sm text-gray-800">{summarizeResult(result)}</p>}
+        {result && !summarizeResult && (
           <pre className="mt-3 text-xs bg-gray-50 border border-gray-200 rounded-lg p-3 overflow-x-auto">
             {JSON.stringify(result, null, 2)}
           </pre>

@@ -18,9 +18,12 @@ agents:
     kind: Fixed workflow (not an agent)
     pattern: Sequential pipeline
     models:
-      labeler:   {provider: google_genai, model: gemini-3.8-flash}   # cheap + multimodal (images, scans)
+      labeler:          {provider: google_genai, model: gemini-3.6-flash}       # cheap + multimodal (images, scans), stable
+      labeler_fallback: {provider: google_genai, model: gemini-3.5-flash-lite}  # used if the labeler errors or times out
     embeddings:
-      model: BAAI/bge-small-en-v1.5   # open-source, runs in-process via fastembed (384 dims)
+      provider: google_genai       # API embeddings: no model download; document text is sent to Google
+      model: gemini-embedding-2
+      dims: 768                    # changing model or dims rebuilds the vector index (POST /agents/filing/reindex)
 
   scheduler:                    # owner: Teammate B
     title: Scheduler

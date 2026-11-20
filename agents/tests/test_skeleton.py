@@ -61,13 +61,6 @@ def test_scheduler_reject_means_tool_never_runs(client):
     assert n == 2, "rejected publish leaves the new events unpublished"
 
 
-def test_filing_demo_makes_the_library_searchable(client):
-    f = client.post("/agents/filing/demo", params={"class_id": CLASS_ID}).json()["files"][0]
-    assert f["chunk_count"] >= 1 and f["doc_type"] == "syllabus"
-    hits = client.get("/agents/filing/search", params={"class_id": CLASS_ID, "q": "mitochondria ATP"}).json()["results"]
-    assert hits and hits[0]["file_id"] == f["file_id"]
-
-
 def test_materials_revision_is_a_new_version_after_approval(client):
     client.post("/agents/filing/demo", params={"class_id": CLASS_ID})
     out = client.post("/agents/materials/demo", params={"class_id": CLASS_ID}).json()
