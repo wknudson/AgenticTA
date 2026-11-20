@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import datetime, time, timezone
 from time import perf_counter
 from typing import Any
 
@@ -15,6 +16,40 @@ from app.shared.llm import get_model, model_spec
 from app.shared.tracing import agent_trace
 
 PHONE = re.compile(r"(?<!\w)(?:\+?1[-.\s]?)?(?:\(\d{3}\)|\d{3})[-.\s]?\d{3}[-.\s]?\d{4}(?!\w)")
+MIN_EVIDENCE_QUESTIONS = 3
+MIN_EVIDENCE_STUDENTS = 2
+
+
+class AssignmentNotDue(ValueError):
+    """Raised when analysis is requested before its assignment deadline."""
+
+
+def due_date_status(due_date: str | None, *, now: datetime | None = None) -> str:
+    if not due_date:
+        return "no_due_date"
+    try:
+        if len(due_date) == 10:
+            deadline = datetime.combine(datetime.fromisoformat(due_date).date(), time.max, tzinfo=timezone.utc)
+        else:
+            deadline = datetime.fromisoformat(due_date.replace("Z", "+00:00"))
+            if deadline.tzinfo is None:
+                deadline = deadline.replace(tzinfo=timezone.utc)
+            deadline = deadline.astimezone(timezone.utc)
+    except ValueError as exc:
+        raise ValueError("Assignment due date is invalid; update it before analyzing chats.") from exc
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    return "eligible" if current.astimezone(timezone.utc) > deadline else "upcoming"
+
+
+def assignment_for_analysis(class_id: int, assignment_id: int) -> dict[str, Any] | None:
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT assignment_id, assignment_name, due_date FROM assignments WHERE class_id = ? AND assignment_id = ?",
+            (class_id, assignment_id),
+        ).fetchone()
+    return dict(row) if row else None
 
 
 class Cluster(BaseModel):
@@ -30,7 +65,7 @@ class ClusterResult(BaseModel):
 
 
 def load_chats(class_id: int, assignment_id: int | None = None) -> list[dict[str, Any]]:
-    sql = """SELECT m.chat_message_id, m.assignment_id, m.content
+    sql = """SELECT m.chat_message_id, m.student_id, m.assignment_id, m.content
              FROM student_chat_messages m JOIN assignments a ON a.assignment_id = m.assignment_id
              WHERE a.class_id = ? AND m.role = 'user'"""
     params: list[Any] = [class_id]
@@ -162,17 +197,37 @@ def record_metrics(metrics: dict) -> dict:
 
 def run(class_id: int, assignment_id: int | None = None, *, offline: bool = False) -> dict[str, Any]:
     started = perf_counter()
+    if assignment_id is not None:
+        assignment = assignment_for_analysis(class_id, assignment_id)
+        if assignment is None:
+            raise LookupError("Assignment not found for this class.")
+        if due_date_status(assignment["due_date"]) != "eligible":
+            raise AssignmentNotDue("Chat analysis is available after the assignment due date.")
     with langsmith.tracing_context(enabled=False):
         chats = load_chats(class_id, assignment_id)
         questions = redact(class_id, chats)
+        student_by_question = {i: chat.get("student_id") for i, chat in enumerate(chats[:len(questions)], 1)}
         demo_fixture = offline and not questions
         if demo_fixture:
             questions = [
                 {"id": 1, "text": "Does mitosis make four cells with half the chromosomes?"},
                 {"id": 2, "text": "I thought meiosis makes two identical cells. Is that right?"},
-                {"id": 3, "text": "Do plants only use photosynthesis and never cellular respiration?"},
+                {"id": 3, "text": "Does meiosis make identical cells like mitosis?"},
+                {"id": 4, "text": "Do plants only use photosynthesis and never cellular respiration?"},
+                {"id": 5, "text": "Does cellular respiration happen in plants too?"},
+                {"id": 6, "text": "Do plants get energy only from photosynthesis?"},
             ]
+            # Synthetic fixture identities are only used for this offline demonstration.
+            student_by_question = {q["id"]: f"demo-{q['id']}" for q in questions}
         clusters = cluster(questions, offline=offline)
+        supported_clusters = []
+        for group in clusters:
+            student_count = len({student_by_question.get(qid) for qid in group["question_ids"]
+                                 if student_by_question.get(qid) is not None})
+            if len(group["question_ids"]) >= MIN_EVIDENCE_QUESTIONS and student_count >= MIN_EVIDENCE_STUDENTS:
+                supported_clusters.append({**group, "supporting_student_count": student_count})
+        suppressed_count = len(clusters) - len(supported_clusters)
+        clusters = supported_clusters
         names = _student_names(class_id)
         spec = model_spec("misconceptions", "local")
         model_used = "offline:keyword-demo" if offline else f"{spec['provider']}:{spec['model']}"
@@ -184,6 +239,7 @@ def run(class_id: int, assignment_id: int | None = None, *, offline: bool = Fals
                     "explanation": scrub(group.get("explanation", "These questions suggest this concept may need another explanation."), names),
                     "material_update": scrub(group.get("material_update", f"Add a concise clarification and worked example about {topic}."), names),
                     "reteaching_activity": scrub(group.get("reteaching_activity", f"Use a short guided practice activity about {topic}."), names),
+                    "supporting_student_count": group["supporting_student_count"],
                 }
                 examples = [by_id[i] for i in group["question_ids"][:3]]
                 # Repeated runs update the same concept rather than flooding the inbox.
@@ -204,6 +260,7 @@ def run(class_id: int, assignment_id: int | None = None, *, offline: bool = Fals
                      "material_update": scrub(g.get("material_update", f"Add a concise clarification and worked example about {g['topic']}."), names),
                      "reteaching_activity": scrub(g.get("reteaching_activity", f"Use a short guided practice activity about {g['topic']}."), names)} for g in clusters]
     metrics = {"chats_read": len(chats), "questions_analyzed": len(questions), "insights_found": len(clusters),
+               "insights_suppressed": suppressed_count,
                "latency_seconds": round(perf_counter() - started, 3), "model_used": model_used,
                "provider_cost_usd": 0, "offline": offline, "demo_fixture": demo_fixture}
     with agent_trace("misconceptions"):

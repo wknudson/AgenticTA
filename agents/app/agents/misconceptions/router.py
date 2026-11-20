@@ -8,16 +8,41 @@ from ollama import ResponseError
 from app.shared.agent_router import make_router, require_models
 from app.shared.db import connect
 
-from .pipeline import run as run_pipeline
+from .pipeline import (
+    AssignmentNotDue,
+    assignment_for_analysis,
+    due_date_status,
+    run as run_pipeline,
+)
 
 router = make_router("misconceptions")
 
 
+@router.get("/assignments")
+def assignments(class_id: int):
+    with connect() as conn:
+        rows = [dict(row) for row in conn.execute(
+            "SELECT assignment_id, assignment_name, due_date FROM assignments WHERE class_id = ? ORDER BY due_date, assignment_name",
+            (class_id,),
+        ).fetchall()]
+    return {"assignments": [{**row, "analysis_status": due_date_status(row["due_date"])} for row in rows]}
+
+
 @router.post("/run")
 def run(class_id: int = Query(...), assignment_id: int | None = None):
+    if assignment_id is not None:
+        assignment = assignment_for_analysis(class_id, assignment_id)
+        if assignment is None:
+            raise HTTPException(404, "Assignment not found for this class.")
+        if due_date_status(assignment["due_date"]) != "eligible":
+            raise HTTPException(409, "Chat analysis is available after the assignment due date.")
     require_models("misconceptions", "local")
     try:
         return run_pipeline(class_id, assignment_id)
+    except AssignmentNotDue as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(502, str(exc)) from exc
     except (ConnectionError, TimeoutError, HTTPError, ResponseError) as exc:
@@ -25,9 +50,15 @@ def run(class_id: int = Query(...), assignment_id: int | None = None):
 
 
 @router.post("/demo")
-def demo(class_id: int = Query(...)):
-    """Offline: loads + redacts the real chat logs, skips the model step."""
-    return run_pipeline(class_id, offline=True)
+def demo(class_id: int = Query(...), assignment_id: int | None = None):
+    """Offline: analyzes all class chats, or chats for a selected past-due assignment."""
+    if assignment_id is not None:
+        assignment = assignment_for_analysis(class_id, assignment_id)
+        if assignment is None:
+            raise HTTPException(404, "Assignment not found for this class.")
+        if due_date_status(assignment["due_date"]) != "eligible":
+            raise HTTPException(409, "Chat analysis is available after the assignment due date.")
+    return run_pipeline(class_id, assignment_id, offline=True)
 
 
 @router.get("/insights")

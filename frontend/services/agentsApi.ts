@@ -63,8 +63,8 @@ export async function agentsFetch<T>(path: string, init?: RequestInit): Promise<
 
 export const getAgentsHealth = () => agentsFetch<AgentsHealth>('/health');
 
-export const runAgentDemo = (agent: string, classId: number) =>
-  agentsFetch<RunResult>(`/${agent}/demo?class_id=${classId}`, { method: 'POST' });
+export const runAgentDemo = (agent: string, classId: number, extraQuery = '') =>
+  agentsFetch<RunResult>(`/${agent}/demo?class_id=${classId}${extraQuery}`, { method: 'POST' });
 
 export const listApprovals = (classId: number, status: string = 'pending') =>
   agentsFetch<{ approvals: Approval[] }>(`/approvals?class_id=${classId}&status=${encodeURIComponent(status)}`);

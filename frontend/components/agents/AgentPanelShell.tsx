@@ -6,6 +6,8 @@ interface Props {
   classId: number;
   /** Called after the demo/run finishes so the panel can refresh its own data. */
   onRunComplete?: () => void;
+  demoQuery?: string;
+  demoDisabled?: boolean;
   children?: React.ReactNode;
 }
 
@@ -14,7 +16,7 @@ interface Props {
  * models it uses (and whether their keys are set), its LangSmith project, and an
  * offline demo button.  Panels put their own UI in `children`.
  */
-const AgentPanelShell: React.FC<Props> = ({ agent, classId, onRunComplete, children }) => {
+const AgentPanelShell: React.FC<Props> = ({ agent, classId, onRunComplete, demoQuery, demoDisabled, children }) => {
   const [info, setInfo] = useState<AgentInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
@@ -31,7 +33,7 @@ const AgentPanelShell: React.FC<Props> = ({ agent, classId, onRunComplete, child
     setResult(null);
     setError(null);
     try {
-      setResult(await runAgentDemo(agent, classId));
+      setResult(await runAgentDemo(agent, classId, demoQuery));
       onRunComplete?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -53,7 +55,7 @@ const AgentPanelShell: React.FC<Props> = ({ agent, classId, onRunComplete, child
           <button
             type="button"
             onClick={runDemo}
-            disabled={running || (!!error && !info)}
+            disabled={running || (!!error && !info) || !!demoDisabled}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-black text-white hover:bg-gray-800 disabled:opacity-50"
           >
             {running ? 'Running…' : 'Run offline demo'}

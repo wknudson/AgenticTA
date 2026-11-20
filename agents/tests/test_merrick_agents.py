@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 import langsmith
+from datetime import datetime, timezone
 
 from app.shared.db import connect
 from app.agents.scheduler.calendar import TermSettings, save_term, validate_events
@@ -89,26 +90,94 @@ def test_raw_chats_and_redaction_are_not_traceable():
     assert 'Alice' not in text and 'Johnson' not in text and '@' not in text and '555' not in text
 
 
+def test_analysis_opens_only_after_assignment_due_date():
+    now = datetime(2026, 11, 20, 12, 0, tzinfo=timezone.utc)
+    assert pipeline.due_date_status("2026-11-20T11:59:00Z", now=now) == "eligible"
+    assert pipeline.due_date_status("2026-11-20T12:00:00Z", now=now) == "upcoming"
+    assert pipeline.due_date_status("2026-11-21", now=now) == "upcoming"
+    assert pipeline.due_date_status(None, now=now) == "no_due_date"
+
+
+def test_run_rejects_assignment_before_due_date(client):
+    with connect() as conn:
+        cur = conn.execute(
+            "INSERT INTO assignments (class_id, assignment_name, due_date) VALUES (?, ?, ?)",
+            (1, "Future evidence check", "2099-01-01T00:00:00.000Z"),
+        )
+        assignment_id = cur.lastrowid
+    try:
+        response = client.post("/agents/misconceptions/run", params={"class_id": 1, "assignment_id": assignment_id})
+        assert response.status_code == 409
+        assert "after the assignment due date" in response.json()["detail"]
+        with pytest.raises(pipeline.AssignmentNotDue):
+            pipeline.run(1, assignment_id, offline=True)
+    finally:
+        with connect() as conn:
+            conn.execute("DELETE FROM assignments WHERE assignment_id = ?", (assignment_id,))
+
+
+def test_manual_course_run_does_not_require_assignment(client, monkeypatch):
+    from importlib import import_module
+
+    router = import_module("app.agents.misconceptions.router")
+    calls = []
+    monkeypatch.setattr(router, "require_models", lambda *args: None)
+    monkeypatch.setattr(router, "run_pipeline", lambda class_id, assignment_id: calls.append((class_id, assignment_id)) or {
+        "questions_analyzed": 0, "chats_read": 0, "insights_found": 0, "insights_suppressed": 0,
+    })
+    response = client.post("/agents/misconceptions/run", params={"class_id": 1})
+    assert response.status_code == 200
+    assert calls == [(1, None)]
+
+
+def test_offline_course_demo_does_not_require_assignment(client):
+    response = client.post("/agents/misconceptions/demo", params={"class_id": 1})
+    assert response.status_code == 200
+    assert "questions_analyzed" in response.json()
+
+
+def test_weak_evidence_is_held_back(client, monkeypatch):
+    monkeypatch.setattr(pipeline, "load_chats", lambda *args: [
+        {"chat_message_id": 1, "student_id": 1, "assignment_id": 1, "content": "Does mitosis make two cells?"},
+        {"chat_message_id": 2, "student_id": 2, "assignment_id": 1, "content": "Does meiosis make two cells?"},
+    ])
+    monkeypatch.setattr(pipeline, "cluster", lambda *args, **kwargs: [{
+        "topic": "Cell division", "question_ids": [1, 2], "explanation": "Possible confusion",
+        "material_update": "Add a comparison.", "reteaching_activity": "Use a card sort.",
+    }])
+    result = pipeline.run(1, 1, offline=True)
+    assert result["insights_found"] == 0
+    assert result["insights_suppressed"] == 1
+    cards = client.get("/agents/misconceptions/insights", params={"class_id": 1}).json()["insights"]
+    assert not any(card["topic"] == "Cell division" for card in cards)
+
+
 def test_live_pipeline_redacts_before_model_and_traces_counts_only(client, monkeypatch):
     captured = {}
     monkeypatch.setattr(pipeline, 'load_chats', lambda *args: [
         {"chat_message_id": 999, "student_id": 1, "assignment_id": 1,
-         "content": "Alice Johnson alice@school.edu (801) 555-1212: Is mitosis meiosis?"}])
+         "content": "Alice Johnson alice@school.edu (801) 555-1212: Is mitosis meiosis?"},
+        {"chat_message_id": 1000, "student_id": 2, "assignment_id": 1,
+         "content": "Is meiosis the same as mitosis?"},
+        {"chat_message_id": 1001, "student_id": 1, "assignment_id": 1,
+         "content": "Does mitosis work like meiosis?"},
+    ])
     def fake_cluster(questions, **kwargs):
         captured['questions'] = questions
         assert langsmith.get_tracing_context()['enabled'] is False
-        return [{"topic": "Mitosis versus meiosis", "question_ids": [1], "explanation": "Review cell division."}]
+        return [{"topic": "Mitosis versus meiosis", "question_ids": [1, 2, 3], "explanation": "Review cell division."}]
     monkeypatch.setattr(pipeline, 'cluster', fake_cluster)
     monkeypatch.setattr(pipeline, 'record_metrics', lambda metrics: captured.update(metrics=metrics))
-    first = pipeline.run(1)
-    pipeline.run(1)
+    first = pipeline.run(1, 1)
+    pipeline.run(1, 1)
     question = captured['questions'][0]
     assert set(question) == {'id', 'text'} and question['id'] == 1
     assert 'Alice' not in question['text'] and '@' not in question['text'] and '555' not in question['text']
     assert 'text' not in str(captured['metrics']) and 'Alice' not in str(captured['metrics'])
     cards = client.get('/agents/misconceptions/insights?class_id=1').json()['insights']
     matching = [c for c in cards if c['topic'] == 'Mitosis versus meiosis' and c['model_used'] == 'ollama:phi3']
-    assert len(matching) == 1 and matching[0]['evidence_count'] == 1
+    assert len(matching) == 1 and matching[0]['evidence_count'] == 3
+    assert matching[0]['suggestion']['supporting_student_count'] == 2
     assert first['insights_found'] == 1
 
 
@@ -153,7 +222,7 @@ def test_approved_insight_handoff_sends_only_recommendations_and_waits_for_secon
 
     created_ids = set()
     try:
-        pipeline.run(class_id, offline=True)
+        pipeline.run(class_id, 4, offline=True)
         with connect() as conn:
             created_ids = {r["insight_id"] for r in conn.execute(
                 "SELECT insight_id FROM misconception_insights WHERE class_id = ?", (class_id,))} - before_ids

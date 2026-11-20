@@ -19,6 +19,8 @@ Install [Ollama](https://ollama.com), then `ollama pull phi3` (or change the mod
 
 ## Implemented
 - Chat loading is bounded to the 100 most recent user messages. Emails, phone numbers, and enrolled student names are scrubbed before clustering; database and student identifiers are replaced with run-local IDs.
+- Teachers can manually analyze course-wide chats, or select one assignment for a focused analysis after its due date. Both modes are teacher-started; neither is an automatic background job. Course-wide analysis covers up to the 100 most recent tutor questions across assignments.
+- Recommendations require at least three related questions from at least two students. We hold weaker patterns back and tell the teacher more chat evidence is needed. Student identifiers stay out of model input; evidence cards show the aggregate number of students and anonymized example snippets.
 - The local and baseline clustering roles share the same structured output validation. Model calls run with LangSmith tracing disabled; only aggregate counts and elapsed time are traced afterward.
 - The `/insights` endpoint returns stored redacted examples and structured recommendations. The teacher panel offers anonymized examples, the proposed material edit, and a reteaching activity.
 - Clicking **Approve suggestion & draft update** is the teacher's approval to start a materials draft. The `/insights/{id}/draft` endpoint sends only the topic and recommendation to the materials agent, records the insight as sent, and relies on the materials agent's separate approval before any file changes are applied.

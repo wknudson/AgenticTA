@@ -101,7 +101,7 @@ def test_misconceptions_redacts_before_any_model(client):
             "INSERT INTO student_chat_messages (student_id, assignment_id, attempt_number, role, content) VALUES (1, 1, 1, 'user', ?)",
             ("Hi I'm Alice Johnson (alice@school.edu), is mitosis the same as meiosis?",),
         )
-    out = client.post("/agents/misconceptions/demo", params={"class_id": CLASS_ID}).json()
+    out = client.post("/agents/misconceptions/demo", params={"class_id": CLASS_ID, "assignment_id": 1}).json()
     joined = " ".join(out["sample_redacted"])
     assert "Alice" not in joined and "alice@school.edu" not in joined and "[student]" in joined
 
