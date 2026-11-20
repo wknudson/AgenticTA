@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import Logo from './Logo';
 import { ViewState, ClassSummary } from '../types';
 import { COLORS } from '../constants';
 import { ChevronDown } from './Icons';
@@ -52,7 +53,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               className="flex-shrink-0"
               aria-label="All classes"
             >
-              <img src="/img/long-logo.png" alt="Lyrning" className="h-10 sm:h-14 w-auto object-contain" />
+              <Logo size="sm" />
             </button>
             <div className="h-6 w-px bg-slate-300" />
             <span className="text-slate-700 font-medium truncate text-sm sm:text-base">

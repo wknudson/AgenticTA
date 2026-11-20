@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Logo from './Logo';
 import { UserRole, UserSession } from '../types';
 import { adminLogin } from '../services/api';
 import { COLORS } from '../constants';
@@ -43,7 +44,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
     <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
       <div className="w-full max-w-md bg-white rounded-[40px] shadow-2xl p-10 border border-gray-100">
         <div className="flex flex-col items-center mb-8">
-          <img src="/img/tall-logo.png" alt="Lyrning" className="h-24 w-auto object-contain mb-4" />
+          <Logo size="lg" stacked className="mb-4" />
           <p className="text-gray-600 font-semibold">Administrator</p>
           <p className="text-xs text-gray-500 mt-1 text-center">Read-only analytics across all classes</p>
         </div>

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import Logo from './Logo';
 import { ChevronDown } from './Icons';
 import { ViewState, ClassSummary } from '../types';
 import { COLORS } from '../constants';
@@ -50,7 +51,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewChange, on
               className="flex-shrink-0"
               aria-label="Go to assignments"
             >
-              <img src="/img/long-logo.png" alt="Lyrning" className="h-12 sm:h-16 md:h-20 w-auto object-contain object-left" />
+              <Logo size="sm" />
             </button>
             <div className="h-6 w-[1px] bg-gray-300 mx-1 flex-shrink-0"></div>
             <span className="text-gray-600 font-medium truncate">

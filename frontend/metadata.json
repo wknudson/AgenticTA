@@ -1,6 +1,6 @@
 {
-  "name": "Lyrning LMS",
-  "description": "A futuristic Learning Management System featuring integrated AI tutoring, automated assignment generation, and deep student analytics for teachers.",
+  "name": "AgenticTA",
+  "description": "A teacher-first LMS with AI agents that file class materials, build the student calendar, update lessons, make study games and spot misconceptions, with the teacher approving anything students see.",
   "requestFramePermissions": [
     "microphone"
   ]

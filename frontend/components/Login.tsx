@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import Logo from './Logo';
 import { UserRole, UserSession } from '../types';
 import { COLORS } from '../constants';
 import { API_BASE } from '../services/api';
@@ -70,7 +71,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     <div className="min-h-screen flex items-center justify-center bg-[#fcfcfc] p-4">
       <div className="w-full max-w-md bg-white rounded-[40px] shadow-2xl p-10 border border-gray-100">
         <div className="flex flex-col items-center mb-10">
-          <img src="/img/tall-logo.png" alt="Lyrning" className="h-24 w-auto object-contain mb-4" />
+          <Logo size="lg" stacked className="mb-4" />
           <p className="text-gray-500 mt-0">Teacher Portal</p>
         </div>
 
