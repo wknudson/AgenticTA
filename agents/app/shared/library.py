@@ -53,6 +53,7 @@ class LibraryFile:
     review_reason: str | None = None
     extract_method: str | None = None
     mime_type: str | None = None
+    ai_pending: bool = False  # waiting in the batched AI queue
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -85,6 +86,7 @@ def _row_to_file(r: Any) -> LibraryFile:
         review_reason=r["review_reason"] if "review_reason" in keys else None,
         extract_method=r["extract_method"] if "extract_method" in keys else None,
         mime_type=r["mime_type"],
+        ai_pending=bool(r["ai_pending"]) if "ai_pending" in keys else False,
     )
 
 
@@ -208,6 +210,41 @@ def ensure_vector_index() -> None:
                     embedding float[{int(spec['dims'])}] distance_metric=cosine)"""
         )
         conn.execute("INSERT OR REPLACE INTO library_meta (key, value) VALUES ('embedding', ?)", (want,))
+
+
+def embed_texts(title: str, texts: list[str]) -> list[list[float]] | None:
+    """Document embeddings for chunks, or None without a key / during an outage."""
+    emb = get_embedder()
+    if emb is None or not texts:
+        return None
+    try:
+        return emb.embed_documents([(title, t) for t in texts])
+    except Exception:
+        return None
+
+
+def store_vectors(file_id: int, vectors: list[list[float]]) -> int:
+    """Save already-computed chunk vectors (same order as chunk_idx) into the vector index."""
+    with connect() as conn:
+        f = conn.execute("SELECT class_id FROM library_files WHERE file_id = ?", (file_id,)).fetchone()
+        ids = [r[0] for r in conn.execute(
+            "SELECT chunk_id FROM library_chunks WHERE file_id = ? ORDER BY chunk_idx", (file_id,)).fetchall()]
+        if f is None or len(ids) != len(vectors):
+            return 0
+        conn.execute(f"DELETE FROM library_chunk_vec WHERE rowid IN ({','.join('?' * len(ids))})", ids)
+        conn.executemany("INSERT INTO library_chunk_vec (rowid, class_id, embedding) VALUES (?, ?, ?)",
+                         [(cid, f["class_id"], _vec_bytes(v)) for cid, v in zip(ids, vectors)])
+        conn.execute("UPDATE library_files SET embedded = 1 WHERE file_id = ?", (file_id,))
+    return len(ids)
+
+
+def file_vectors(file_id: int) -> list[list[float]]:
+    """The stored chunk vectors of a file (empty if it was never embedded)."""
+    with connect() as conn:
+        rows = conn.execute(
+            """SELECT v.embedding FROM library_chunks c JOIN library_chunk_vec v ON v.rowid = c.chunk_id
+               WHERE c.file_id = ? ORDER BY c.chunk_idx""", (file_id,)).fetchall()
+    return [list(struct.unpack(f"{len(r[0]) // 4}f", r[0])) for r in rows]
 
 
 def delete_chunks(file_id: int, conn: Any) -> None:

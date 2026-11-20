@@ -108,7 +108,8 @@ def main() -> None:
 
     open_eval_db(args.fresh)
     sys.path.insert(0, str(AGENTS))
-    from app.agents.filing.pipeline import ingest, reprocess
+    from app.agents.filing import ai_queue
+    from app.agents.filing.pipeline import AI_CALLS, ingest
     from app.shared import library
     from app.shared.db import connect, init_db
     from app.shared.embeddings import get_embedder
@@ -123,18 +124,26 @@ def main() -> None:
     with connect() as conn:
         have = {r["original_name"]: dict(r) for r in conn.execute(
             "SELECT * FROM library_files WHERE class_id = ? AND status NOT IN ('archived', 'draft')", (CLASS_ID,))}
-    rows, t_all, calls_spent = [], time.time(), 0
+    t_all, ai_before = time.time(), AI_CALLS["requests"]
+    how_by_name: dict[str, str] = {}
     for name in course_order(list(key)):
-        t, prev = time.time(), have.get(name)
-        if prev and (prev["label_source"] in ("llm", "llm-fallback") or args.search_only):
-            r, how = prev, "reused"                   # already AI-labeled: costs nothing
-        elif prev and not args.search_only:
-            r, how = reprocess(prev["file_id"]), "retried"  # fell back to rules earlier: try the AI again
-            calls_spent += 1
-        elif not args.search_only:
-            r, how = ingest(CLASS_ID, name, (SAMPLE / "biology_course" / name).read_bytes()), "new"
-            calls_spent += 1
+        prev = have.get(name)
+        if prev or args.search_only:
+            how_by_name[name] = "reused"  # already filed: costs nothing (the queue retries anything still pending)
         else:
+            ingest(CLASS_ID, name, (SAMPLE / "biology_course" / name).read_bytes())
+            how_by_name[name] = "new"
+    if not args.search_only:  # the batched AI double-check, as the background worker would do it
+        ai_queue.process_pending(CLASS_ID, force=True, until_empty=True)
+    ai_requests = AI_CALLS["requests"] - ai_before
+
+    with connect() as conn:
+        current = {r["original_name"]: dict(r) for r in conn.execute(
+            "SELECT * FROM library_files WHERE class_id = ? AND status NOT IN ('archived', 'draft')", (CLASS_ID,))}
+    rows = []
+    for name in course_order(list(key)):
+        r, how, t = current.get(name), how_by_name.get(name, "-"), time.time()
+        if r is None:
             continue
         k = key[name]
         rows.append({
@@ -149,13 +158,15 @@ def main() -> None:
     if not rows:
         sys.exit("Nothing filed yet: run without --search-only first.")
     ai_rows = [r for r in rows if r["source"] in ("llm", "llm-fallback")]
+    auto_rows = [r for r in rows if r["source"] == "auto"]
     labeling = {
         "files": len(rows),
-        "ai_labeled": f"{len(ai_rows)}/{len(rows)}",
-        "waiting_for_ai_quota": sum(r["source"] == "heuristic" for r in rows),
-        "files_sent_to_ai_this_run": calls_spent,
-        "type_accuracy_ai_only": mean(r["type_ok"] for r in ai_rows) if ai_rows else 0.0,
-        "unit_accuracy_ai_only": mean(r["unit_ok"] for r in ai_rows) if ai_rows else 0.0,
+        "ai_requests_this_run": ai_requests,
+        "labeled_without_ai": f"{len(auto_rows)}/{len(rows)}",
+        "labeled_by_ai": f"{len(ai_rows)}/{len(rows)}",
+        "still_waiting_for_ai": sum(bool(current[r['file']]["ai_pending"]) for r in rows),
+        "accuracy_without_ai": mean(r["type_ok"] and r["unit_ok"] for r in auto_rows) if auto_rows else 0.0,
+        "accuracy_ai_labeled": mean(r["type_ok"] and r["unit_ok"] for r in ai_rows) if ai_rows else 0.0,
         "type_accuracy": mean(r["type_ok"] for r in rows),
         "unit_accuracy": mean(r["unit_ok"] for r in rows),
         "both_correct": mean(r["type_ok"] and r["unit_ok"] for r in rows),

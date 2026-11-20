@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS library_files (
     extract_method   TEXT,                   -- text | vision | none
     page_count       INTEGER,
     embedded         INTEGER NOT NULL DEFAULT 0,  -- 1 once its chunks are in library_chunk_vec
+    ai_pending       INTEGER NOT NULL DEFAULT 0,  -- 1 = queued for a (batched) AI double-check
+    ai_queued_at     TEXT,
     status           TEXT NOT NULL DEFAULT 'filed',  -- filed | needs_review | draft | archived
     -- versioning (materials agent writes new versions, never overwrites)
     version          INTEGER NOT NULL DEFAULT 1,

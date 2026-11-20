@@ -1,0 +1,5 @@
+Notes: point-slope form
+
+If you know one point (x1, y1) and the slope m, write y - y1 = m(x - x1).
+Example: through (2, 5) with slope 3: y - 5 = 3(x - 2), so y = 3x - 1.
+Converting to standard form Ax + By = C: move the x term over and clear fractions.

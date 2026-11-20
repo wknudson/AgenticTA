@@ -29,7 +29,9 @@ const MATCH_BADGE: Record<SearchHit['match'], { text: string; cls: string }> = {
   keyword: { text: 'keyword', cls: 'bg-gray-50 text-gray-700 border-gray-200' },
 };
 
-const SOURCE_BADGE: Record<string, string> = { llm: 'AI', 'llm-fallback': 'AI (backup)', heuristic: 'auto', teacher: 'you' };
+const SOURCE_BADGE: Record<string, string> = {
+  auto: 'auto', llm: 'AI', 'llm-fallback': 'AI (backup)', heuristic: 'auto', teacher: 'you',
+};
 
 function highlight(text: string, q: string): React.ReactNode {
   const terms = q.split(/\s+/).filter((t) => t.length > 2).map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
@@ -79,6 +81,14 @@ const LibraryPanel: React.FC<AgentPanelProps> = ({ classId }) => {
   }, [classId]);
   useEffect(load, [load]);
 
+  // While the batched AI queue works on some files, refresh every few seconds so their labels update.
+  const anyPending = files.some((f) => f.ai_pending);
+  useEffect(() => {
+    if (!anyPending) return;
+    const t = window.setInterval(load, 4000);
+    return () => window.clearInterval(t);
+  }, [anyPending, load]);
+
   const review = files.filter((f) => f.status === 'needs_review');
   const unitNames = units.map((u) => u.unit).filter((u): u is string => !!u);
   const shown = useMemo(
@@ -121,7 +131,8 @@ const LibraryPanel: React.FC<AgentPanelProps> = ({ classId }) => {
             {showReason ? f.review_reason : `${f.original_name}${f.unit ? ` · ${f.unit}` : ''}${f.dates.length ? ` · ${f.dates.length} date(s)` : ''}`}
           </span>
         </span>
-        {f.status === 'needs_review' && !showReason && <span className="text-xs text-amber-700 shrink-0">review</span>}
+        {f.ai_pending && !showReason && <span className="text-xs text-blue-700 shrink-0">AI checking…</span>}
+        {f.status === 'needs_review' && !f.ai_pending && !showReason && <span className="text-xs text-amber-700 shrink-0">review</span>}
         <span className="text-xs text-gray-400 shrink-0" title="Who labeled it">{SOURCE_BADGE[f.label_source ?? ''] ?? ''}</span>
       </button>
     </li>

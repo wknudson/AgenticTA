@@ -1,0 +1,332 @@
+[
+  {
+    "folder": "algebra2",
+    "file": "Algebra2_Syllabus_Fall2026.docx",
+    "doc_types": [
+      "syllabus"
+    ],
+    "unit": null,
+    "note": ""
+  },
+  {
+    "folder": "algebra2",
+    "file": "Algebra2_Calendar_Fall2026.txt",
+    "doc_types": [
+      "schedule"
+    ],
+    "unit": null,
+    "note": ""
+  },
+  {
+    "folder": "algebra2",
+    "file": "Unit1_Slope_and_Lines_Slides.pptx",
+    "doc_types": [
+      "lecture"
+    ],
+    "unit": "Unit 1: Linear Functions",
+    "note": ""
+  },
+  {
+    "folder": "algebra2",
+    "file": "slope_intercept_notes.txt",
+    "doc_types": [
+      "lecture"
+    ],
+    "unit": "Unit 1: Linear Functions",
+    "note": "never names its unit; the syllabus outline should place it in Unit 1"
+  },
+  {
+    "folder": "algebra2",
+    "file": "Graphing_Lines_Worksheet.docx",
+    "doc_types": [
+      "worksheet"
+    ],
+    "unit": "Unit 1: Linear Functions",
+    "note": ""
+  },
+  {
+    "folder": "algebra2",
+    "file": "Unit 1 Quiz - Linear Functions.pdf",
+    "doc_types": [
+      "quiz"
+    ],
+    "unit": "Unit 1: Linear Functions",
+    "note": ""
+  },
+  {
+    "folder": "algebra2",
+    "file": "Systems_Substitution_Elimination_Notes.docx",
+    "doc_types": [
+      "lecture"
+    ],
+    "unit": "Unit 2: Systems of Equations",
+    "note": "never names its unit"
+  },
+  {
+    "folder": "algebra2",
+    "file": "Systems_Word_Problems_Practice.pdf",
+    "doc_types": [
+      "worksheet"
+    ],
+    "unit": "Unit 2: Systems of Equations",
+    "note": ""
+  },
+  {
+    "folder": "algebra2",
+    "file": "Unit2_Test_Systems.pdf",
+    "doc_types": [
+      "test"
+    ],
+    "unit": "Unit 2: Systems of Equations",
+    "note": ""
+  },
+  {
+    "folder": "algebra2",
+    "file": "Quadratics_Slides.pptx",
+    "doc_types": [
+      "lecture"
+    ],
+    "unit": "Unit 3: Quadratic Functions",
+    "note": ""
+  },
+  {
+    "folder": "algebra2",
+    "file": "Factoring_Practice_Worksheet.docx",
+    "doc_types": [
+      "worksheet"
+    ],
+    "unit": "Unit 3: Quadratic Functions",
+    "note": "never names its unit"
+  },
+  {
+    "folder": "algebra2",
+    "file": "Quadratic_Formula_Discovery_Activity.pdf",
+    "doc_types": [
+      "worksheet",
+      "lab"
+    ],
+    "unit": "Unit 3: Quadratic Functions",
+    "note": ""
+  },
+  {
+    "folder": "algebra2",
+    "file": "whiteboard_vertex_form.jpg",
+    "doc_types": [
+      "lecture"
+    ],
+    "unit": "Unit 3: Quadratic Functions",
+    "note": "photo of a whiteboard: needs Gemini vision"
+  },
+  {
+    "folder": "algebra2",
+    "file": "Unit3_Quiz_Quadratics_SCANNED.pdf",
+    "doc_types": [
+      "quiz"
+    ],
+    "unit": "Unit 3: Quadratic Functions",
+    "note": "scanned PDF with no text layer: needs Gemini vision"
+  },
+  {
+    "folder": "algebra2",
+    "file": "Exponential_Growth_Notes.md",
+    "doc_types": [
+      "lecture"
+    ],
+    "unit": "Unit 4: Exponential Functions",
+    "note": "never names its unit"
+  },
+  {
+    "folder": "algebra2",
+    "file": "Compound_Interest_Project_Rubric.docx",
+    "doc_types": [
+      "rubric"
+    ],
+    "unit": "Unit 4: Exponential Functions",
+    "note": ""
+  },
+  {
+    "folder": "algebra2",
+    "file": "Reading_Why_Credit_Card_Debt_Grows.txt",
+    "doc_types": [
+      "reading"
+    ],
+    "unit": "Unit 4: Exponential Functions",
+    "note": ""
+  },
+  {
+    "folder": "algebra2",
+    "file": "Final_Review_Algebra2.docx",
+    "doc_types": [
+      "worksheet",
+      "other"
+    ],
+    "unit": null,
+    "note": ""
+  },
+  {
+    "folder": "intro_cs",
+    "file": "IntroCS_Syllabus.docx",
+    "doc_types": [
+      "syllabus"
+    ],
+    "unit": null,
+    "note": ""
+  },
+  {
+    "folder": "intro_cs",
+    "file": "Python_Basics_Slides.pptx",
+    "doc_types": [
+      "lecture"
+    ],
+    "unit": "Unit 1: Getting Started with Python",
+    "note": ""
+  },
+  {
+    "folder": "intro_cs",
+    "file": "hello_world_starter.py",
+    "doc_types": [
+      "worksheet"
+    ],
+    "unit": "Unit 1: Getting Started with Python",
+    "note": "Python code file, read as text"
+  },
+  {
+    "folder": "intro_cs",
+    "file": "Variables_and_Input_Worksheet.docx",
+    "doc_types": [
+      "worksheet"
+    ],
+    "unit": "Unit 1: Getting Started with Python",
+    "note": ""
+  },
+  {
+    "folder": "intro_cs",
+    "file": "If_Statements_Notes.md",
+    "doc_types": [
+      "lecture"
+    ],
+    "unit": "Unit 2: Decisions and Loops",
+    "note": "never names its unit"
+  },
+  {
+    "folder": "intro_cs",
+    "file": "Loops_Practice_Problems.pdf",
+    "doc_types": [
+      "worksheet"
+    ],
+    "unit": "Unit 2: Decisions and Loops",
+    "note": ""
+  },
+  {
+    "folder": "intro_cs",
+    "file": "guessing_game_project.py",
+    "doc_types": [
+      "worksheet",
+      "other"
+    ],
+    "unit": "Unit 2: Decisions and Loops",
+    "note": "code file with a due date in a comment"
+  },
+  {
+    "folder": "intro_cs",
+    "file": "Unit2_Quiz_Loops.pdf",
+    "doc_types": [
+      "quiz"
+    ],
+    "unit": "Unit 2: Decisions and Loops",
+    "note": ""
+  },
+  {
+    "folder": "intro_cs",
+    "file": "debugging_trace_table_photo.jpg",
+    "doc_types": [
+      "lecture"
+    ],
+    "unit": "Unit 2: Decisions and Loops",
+    "note": "photo of a whiteboard: needs vision"
+  },
+  {
+    "folder": "intro_cs",
+    "file": "Functions_Slides.pptx",
+    "doc_types": [
+      "lecture"
+    ],
+    "unit": "Unit 3: Functions and Lists",
+    "note": ""
+  },
+  {
+    "folder": "intro_cs",
+    "file": "Lists_Cheat_Sheet.txt",
+    "doc_types": [
+      "lecture",
+      "reading",
+      "other"
+    ],
+    "unit": "Unit 3: Functions and Lists",
+    "note": ""
+  },
+  {
+    "folder": "intro_cs",
+    "file": "Final_Project_Rubric.docx",
+    "doc_types": [
+      "rubric"
+    ],
+    "unit": "Unit 3: Functions and Lists",
+    "note": ""
+  },
+  {
+    "folder": "edge_cases",
+    "file": "Graphing_Lines_Worksheet (1).docx",
+    "doc_types": [
+      "worksheet"
+    ],
+    "unit": "Unit 1: Linear Functions",
+    "note": "exact duplicate of a file already filed: should say 'already in your library'"
+  },
+  {
+    "folder": "edge_cases",
+    "file": "Graphing_Lines_Worksheet_v2.docx",
+    "doc_types": [
+      "worksheet"
+    ],
+    "unit": "Unit 1: Linear Functions",
+    "note": "changed copy: filed as a separate file (not a duplicate)"
+  },
+  {
+    "folder": "edge_cases",
+    "file": "gradebook_export.xlsx",
+    "doc_types": [
+      "other"
+    ],
+    "unit": null,
+    "note": "spreadsheet: not supported yet, should land in Needs review with the reason"
+  },
+  {
+    "folder": "edge_cases",
+    "file": "scan_blank_page.pdf",
+    "doc_types": [
+      "other"
+    ],
+    "unit": null,
+    "note": "blank scanned page: nothing to read, should go to Needs review"
+  },
+  {
+    "folder": "edge_cases",
+    "file": "IMG_4021.jpg",
+    "doc_types": [
+      "schedule",
+      "other"
+    ],
+    "unit": null,
+    "note": "vague file name + photo of a sticky note: tests vision + date extraction"
+  },
+  {
+    "folder": "edge_cases",
+    "file": "Algebra2_Textbook_Ch3_Excerpt.pdf",
+    "doc_types": [
+      "reading"
+    ],
+    "unit": "Unit 3: Quadratic Functions",
+    "note": "8-page PDF: search hits should show page numbers"
+  }
+]

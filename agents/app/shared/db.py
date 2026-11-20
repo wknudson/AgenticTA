@@ -71,6 +71,8 @@ ADDED_COLUMNS: dict[str, dict[str, str]] = {
         "extract_method": "TEXT",
         "page_count": "INTEGER",
         "embedded": "INTEGER NOT NULL DEFAULT 0",
+        "ai_pending": "INTEGER NOT NULL DEFAULT 0",
+        "ai_queued_at": "TEXT",
     },
 }
 
