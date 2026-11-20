@@ -7,14 +7,12 @@ up as tool calls in LangSmith).
 from __future__ import annotations
 
 import json
-from collections import Counter
-from datetime import date
 
 from langchain_core.tools import tool
 
 from app.shared import library
 from app.shared.db import connect
-from app.shared.guardrails import is_weekend, within_range
+from .calendar import load_term, validate_events
 
 
 @tool
@@ -36,40 +34,27 @@ def get_library_dates(class_id: int) -> str:
 
 
 def _term(class_id: int) -> dict:
-    with connect() as conn:
-        r = conn.execute("SELECT * FROM term_calendar WHERE class_id = ?", (class_id,)).fetchone()
-    if r is None:  # TODO(Teammate B): require the teacher to fill this in from the panel
-        return {"term_start": "2026-08-24", "term_end": "2026-12-18", "holidays": [], "max_per_day": 2}
-    return {"term_start": r["term_start"], "term_end": r["term_end"],
-            "holidays": json.loads(r["holidays_json"]), "max_per_day": r["max_assessments_per_day"]}
+    settings = load_term(class_id)
+    if settings is None:
+        raise ValueError("Save term dates and holidays before scheduling.")
+    return settings
 
 
 @tool
 def check_conflicts(class_id: int, events: list[dict]) -> str:
-    """Deterministic checks on proposed events [{title, date: YYYY-MM-DD, kind}].
-    Flags: outside the term, weekend, holiday, too many assessments on one day."""
-    t = _term(class_id)
-    start, end = date.fromisoformat(t["term_start"]), date.fromisoformat(t["term_end"])
-    holidays = {h["date"]: h.get("label", "holiday") for h in t["holidays"]}
-    per_day = Counter(e["date"] for e in events if e.get("kind") in ("assessment", "assignment_due"))
-    problems = []
-    for e in events:
-        d = date.fromisoformat(e["date"])
-        if not within_range(d, start, end):
-            problems.append({"event": e["title"], "date": e["date"], "problem": "outside the term"})
-        if is_weekend(d):
-            problems.append({"event": e["title"], "date": e["date"], "problem": "weekend"})
-        if e["date"] in holidays:
-            problems.append({"event": e["title"], "date": e["date"], "problem": f"holiday: {holidays[e['date']]}"})
-    for day, n in per_day.items():
-        if n > t["max_per_day"]:
-            problems.append({"date": day, "problem": f"{n} assessments/due dates (max {t['max_per_day']})"})
-    return json.dumps({"ok": not problems, "problems": problems})
+    """Check dates against teacher settings and already published assessments."""
+    with connect() as conn:
+        published = [dict(r) for r in conn.execute(
+            "SELECT * FROM calendar_events WHERE class_id = ? AND status = 'published'", (class_id,))]
+    return json.dumps(validate_events(load_term(class_id), events, published))
 
 
 @tool
 def propose_events(class_id: int, events: list[dict]) -> str:
     """Save events as PROPOSED (students can't see them yet).  events: [{title, date, kind, source?}]"""
+    checks = json.loads(check_conflicts.invoke({"class_id": class_id, "events": events}))
+    if not checks["ok"]:
+        return json.dumps({"proposed_event_ids": [], **checks})
     with connect() as conn:
         ids = [
             conn.execute(
@@ -82,16 +67,27 @@ def propose_events(class_id: int, events: list[dict]) -> str:
 
 
 @tool
-def publish_calendar(class_id: int, event_ids: list[int] | None = None) -> str:
-    """Publish proposed events to the student calendar (all proposed events if event_ids is empty).
-    CONSEQUENTIAL: pauses for teacher approval (HITL)."""
-    sql, params = "UPDATE calendar_events SET status = 'published' WHERE class_id = ? AND status = 'proposed'", [class_id]
-    if event_ids:
-        sql += f" AND event_id IN ({','.join('?' * len(event_ids))})"
-        params += event_ids
+def publish_calendar(class_id: int, event_ids: list[int]) -> str:
+    """Publish ONLY the specified proposed events after teacher approval.
+    Revalidates current rules so stale or edited approvals cannot bypass them."""
+    if not event_ids:
+        return json.dumps({"published": 0, "ok": False, "problems": [{"problem": "Explicit event ids are required."}]})
+    marks = ','.join('?' for _ in event_ids)
     with connect() as conn:
-        n = conn.execute(sql, params).rowcount
-    return json.dumps({"published": n})
+        conn.execute("BEGIN IMMEDIATE")
+        events = [dict(r) for r in conn.execute(
+            f"SELECT * FROM calendar_events WHERE class_id = ? AND status = 'proposed' AND event_id IN ({marks})",
+            [class_id, *event_ids])]
+        if len(events) != len(set(event_ids)):
+            return json.dumps({"published": 0, "ok": False, "problems": [{"problem": "Some events are missing or no longer proposed."}]})
+        published = [dict(r) for r in conn.execute(
+            "SELECT * FROM calendar_events WHERE class_id = ? AND status = 'published'", (class_id,))]
+        checks = validate_events(load_term(class_id), events, published)
+        if not checks["ok"]:
+            return json.dumps({"published": 0, **checks})
+        conn.execute(f"UPDATE calendar_events SET status = 'published' WHERE class_id = ? AND event_id IN ({marks})",
+                     [class_id, *event_ids])
+    return json.dumps({"published": len(events), "ok": True})
 
 
 TOOLS = [get_assignments, get_library_dates, check_conflicts, propose_events, publish_calendar]
