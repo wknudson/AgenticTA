@@ -58,8 +58,8 @@ def propose_events(class_id: int, events: list[dict]) -> str:
     with connect() as conn:
         ids = [
             conn.execute(
-                "INSERT INTO calendar_events (class_id, title, kind, date, source) VALUES (?, ?, ?, ?, ?)",
-                (class_id, e["title"], e.get("kind", "event"), e["date"], e.get("source")),
+                "INSERT INTO calendar_events (class_id, title, kind, date, source, assignment_id) VALUES (?, ?, ?, ?, ?, ?)",
+                (class_id, e["title"], e.get("kind", "event"), e["date"], e.get("source"), e.get("assignment_id")),
             ).lastrowid
             for e in events
         ]

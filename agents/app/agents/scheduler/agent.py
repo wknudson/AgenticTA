@@ -74,3 +74,14 @@ def demo_script(class_id: int) -> list[AIMessage]:
         AIMessage("", tool_calls=[{"name": "publish_calendar", "args": {"class_id": class_id, "event_ids": ids}, "id": "c4"}]),
         AIMessage("Offline demo finished: 2 events went through the approval step."),
     ]
+
+
+def publish_script(class_id: int, events: list[dict], event_ids: list[int], summary: str) -> list[AIMessage]:
+    """The no-AI "draft from documents" path: events were drafted by code (drafting.py) and
+    already proposed; this replays the same check + publish tool calls so the teacher approves
+    them in the Approvals inbox exactly like an AI-built calendar."""
+    return [
+        AIMessage("", tool_calls=[{"name": "check_conflicts", "args": {"class_id": class_id, "events": events}, "id": "d1"}]),
+        AIMessage("", tool_calls=[{"name": "publish_calendar", "args": {"class_id": class_id, "event_ids": event_ids}, "id": "d2"}]),
+        AIMessage(summary),
+    ]

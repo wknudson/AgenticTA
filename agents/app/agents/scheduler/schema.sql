@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS calendar_events (
     date          TEXT NOT NULL,                  -- YYYY-MM-DD
     assignment_id INTEGER REFERENCES assignments(assignment_id) ON DELETE SET NULL,
     source        TEXT,                           -- where the date came from (file title, assignment)
-    status        TEXT NOT NULL DEFAULT 'proposed', -- proposed | published | rejected
+    status        TEXT NOT NULL DEFAULT 'proposed', -- proposed | published | rejected | removed (teacher)
     created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_calendar_events_class ON calendar_events(class_id, status, date);
