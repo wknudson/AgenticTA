@@ -42,6 +42,7 @@ const UploadZone: React.FC<{ classId: number; onFiled: () => void }> = ({ classI
     if (row.state === 'error') return <span className="text-red-700">failed: {row.error}</span>;
     const r = row.result!;
     if (r.duplicate) return <span className="text-gray-600">already in your library</span>;
+    if (r.ai_pending) return <span className="text-blue-700">filed; AI double-checking</span>;
     if (r.status === 'needs_review') return <span className="text-amber-700">needs review: {r.review_reason}</span>;
     return <span className="text-green-700">filed</span>;
   };

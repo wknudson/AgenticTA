@@ -35,11 +35,23 @@ def test_images_and_scans_without_a_key_go_to_review(filed):
         assert f["status"] == "needs_review" and "GOOGLE_API_KEY" in f["review_reason"], name
 
 
-def test_heuristic_labels_are_marked_and_reviewed(filed):
-    syllabus = filed["Bio10_Syllabus_Fall2026.docx"]
-    assert syllabus["doc_type"] == "syllabus"
-    f = library.get_file(syllabus["file_id"])
-    assert f.label_source == "heuristic" and f.status == "needs_review"
+def test_fast_labels_file_the_syllabus_without_any_ai(filed):
+    f = library.get_file(filed["Bio10_Syllabus_Fall2026.docx"]["file_id"])
+    assert (f.doc_type, f.unit, f.label_source, f.status) == ("syllabus", None, "auto", "filed")
+    assert {d["date"] for d in f.dates} >= {"2026-09-17", "2026-10-15", "2026-12-16"}, "dates come from the table rows"
+
+
+def test_file_name_rules_give_the_right_type(filed):
+    want = {"Unit1_Quiz_Macromolecules.pdf": "quiz", "Lab_Report_Rubric.docx": "rubric", "Osmosis_Egg_Lab.pdf": "lab",
+            "Final_Exam_Review_Guide.docx": "worksheet", "Course_Calendar_Fall2026.txt": "schedule",
+            "Cell_Organelles_Slides.pptx": "lecture", "Reading_Endosymbiosis.txt": "reading"}
+    assert {n: library.get_file(filed[n]["file_id"]).doc_type for n in want} == want
+
+
+def test_unit_named_in_the_file_is_snapped_to_the_syllabus_unit(filed):
+    f = library.get_file(filed["Unit2_Test_Systems.pdf" if "Unit2_Test_Systems.pdf" in filed else
+                                "Unit 2 Test - Cell Structure.pdf"]["file_id"])
+    assert f.unit == "Unit 2: Cell Structure"
 
 
 def test_keyword_search_finds_exact_terms(client, filed):

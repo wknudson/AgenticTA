@@ -23,7 +23,9 @@
     "test:agents": "cd agents && node ../scripts/uv.mjs run pytest -q",
     "env": "node scripts/init-env.mjs",
     "sample-course": "cd agents && node ../scripts/uv.mjs run python sample_data/build_sample_course.py",
-    "eval:filing": "cd agents && node ../scripts/uv.mjs run python evals/filing_eval.py"
+    "eval:filing": "cd agents && node ../scripts/uv.mjs run python evals/filing_eval.py",
+    "test-materials": "cd agents && node ../scripts/uv.mjs run python sample_data/build_test_materials.py",
+    "library:reset": "cd agents && node ../scripts/uv.mjs run python scripts/reset_library.py"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

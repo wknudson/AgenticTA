@@ -19,10 +19,12 @@ export interface LibraryFile {
   version: number;
   created_at: string | null;
   label_confidence: number | null;
-  label_source: 'llm' | 'llm-fallback' | 'heuristic' | 'teacher' | null;
+  label_source: 'auto' | 'llm' | 'llm-fallback' | 'heuristic' | 'teacher' | null;
   review_reason: string | null;
   extract_method: 'text' | 'vision' | 'none' | null;
   mime_type: string | null;
+  /** queued for the batched AI double-check */
+  ai_pending: boolean;
 }
 
 export interface FileDetail extends LibraryFile {
@@ -58,6 +60,7 @@ export interface IngestResult {
   review_reason: string | null;
   duplicate: boolean;
   chunk_count: number;
+  ai_pending?: number;
 }
 
 export const listFiles = (classId: number, status?: string) =>

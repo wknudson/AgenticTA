@@ -27,7 +27,14 @@ AGENTS = list(config()["agents"].keys())  # filing, scheduler, materials, games,
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()  # create agent tables (IF NOT EXISTS) in the shared SQLite file
+    modules = [importlib.import_module(f"app.agents.{n}") for n in AGENTS]
+    for m in modules:  # an agent package may define on_startup/on_shutdown (e.g. background workers)
+        if hasattr(m, "on_startup"):
+            m.on_startup()
     yield
+    for m in modules:
+        if hasattr(m, "on_shutdown"):
+            m.on_shutdown()
 
 
 app = FastAPI(title="AgenticTA agents", version="0.1.0", lifespan=lifespan)

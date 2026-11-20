@@ -1,0 +1,1578 @@
+{
+  "labeling": {
+    "files": 32,
+    "ai_requests_this_run": 5,
+    "labeled_without_ai": "21/32",
+    "labeled_by_ai": "11/32",
+    "still_waiting_for_ai": 0,
+    "accuracy_without_ai": 0.9523809523809523,
+    "accuracy_ai_labeled": 1,
+    "type_accuracy": 1,
+    "unit_accuracy": 0.96875,
+    "both_correct": 0.96875,
+    "vision_files_read": "3/3",
+    "sent_to_review": 1,
+    "used_fallback_model": 0,
+    "seconds_this_run": 211.3
+  },
+  "search": {
+    "keyword": {
+      "all": {
+        "hit@1": 0.76,
+        "hit@5": 0.92,
+        "recall@5": 0.88,
+        "mrr": 0.826
+      },
+      "paraphrase": {
+        "hit@1": 0.667,
+        "hit@5": 0.867,
+        "recall@5": 0.8,
+        "mrr": 0.76
+      },
+      "exact": {
+        "hit@1": 0.9,
+        "hit@5": 1.0,
+        "recall@5": 1.0,
+        "mrr": 0.925
+      }
+    },
+    "semantic": {
+      "all": {
+        "hit@1": 0.96,
+        "hit@5": 1.0,
+        "recall@5": 0.987,
+        "mrr": 0.98
+      },
+      "paraphrase": {
+        "hit@1": 0.933,
+        "hit@5": 1.0,
+        "recall@5": 1.0,
+        "mrr": 0.967
+      },
+      "exact": {
+        "hit@1": 1.0,
+        "hit@5": 1.0,
+        "recall@5": 0.967,
+        "mrr": 1.0
+      }
+    },
+    "hybrid": {
+      "all": {
+        "hit@1": 0.88,
+        "hit@5": 0.96,
+        "recall@5": 0.94,
+        "mrr": 0.919
+      },
+      "paraphrase": {
+        "hit@1": 0.8,
+        "hit@5": 0.933,
+        "recall@5": 0.9,
+        "mrr": 0.865
+      },
+      "exact": {
+        "hit@1": 1.0,
+        "hit@5": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    }
+  },
+  "files": [
+    {
+      "file": "Bio10_Syllabus_Fall2026.docx",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "syllabus",
+      "type_ok": true,
+      "unit": null,
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Course_Calendar_Fall2026.txt",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "schedule",
+      "type_ok": true,
+      "unit": null,
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Cell_Organelles_Slides.pptx",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "lecture",
+      "type_ok": true,
+      "unit": "Unit 2: Cell Structure",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Cellular_Respiration_Notes.docx",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "lecture",
+      "type_ok": true,
+      "unit": "Unit 3: Cell Energy",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Enzyme_Lab_Toothpickase.pdf",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "lab",
+      "type_ok": true,
+      "unit": "Unit 1: Chemistry of Life",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Final_Exam_Review_Guide.docx",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "worksheet",
+      "type_ok": true,
+      "unit": null,
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "llm",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Lab_Report_Rubric.docx",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "rubric",
+      "type_ok": true,
+      "unit": null,
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "llm",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Lab_Safety_Contract.pdf",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "lab",
+      "type_ok": true,
+      "unit": "Unit 1: Chemistry of Life",
+      "unit_ok": false,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Leaf_Disk_Lab.pdf",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "lab",
+      "type_ok": true,
+      "unit": "Unit 3: Cell Energy",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "llm",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Macromolecules_Worksheet.docx",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "worksheet",
+      "type_ok": true,
+      "unit": "Unit 1: Chemistry of Life",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Mendel_Genetics_Notes.md",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "lecture",
+      "type_ok": true,
+      "unit": "Unit 4: Cell Division and Genetics",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Mitosis_Meiosis_Slides.pptx",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "lecture",
+      "type_ok": true,
+      "unit": "Unit 4: Cell Division and Genetics",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Onion_Root_Tip_Lab.pdf",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "lab",
+      "type_ok": true,
+      "unit": "Unit 4: Cell Division and Genetics",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "llm",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Organelle_Analogy_Worksheet.docx",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "worksheet",
+      "type_ok": true,
+      "unit": "Unit 2: Cell Structure",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Osmosis_Egg_Lab.pdf",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "lab",
+      "type_ok": true,
+      "unit": "Unit 2: Cell Structure",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Parent_Welcome_Letter.docx",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "other",
+      "type_ok": true,
+      "unit": null,
+      "unit_ok": true,
+      "status": "needs_review",
+      "reason": "couldn't tell what kind of document this is",
+      "source": "llm",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Photosynthesis_Slides.pptx",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "lecture",
+      "type_ok": true,
+      "unit": "Unit 3: Cell Energy",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Photosynthesis_vs_Respiration_Worksheet.docx",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "worksheet",
+      "type_ok": true,
+      "unit": "Unit 3: Cell Energy",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Punnett_Square_Practice.docx",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "worksheet",
+      "type_ok": true,
+      "unit": "Unit 4: Cell Division and Genetics",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Reading_CRISPR_News.txt",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "reading",
+      "type_ok": true,
+      "unit": "Unit 4: Cell Division and Genetics",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "llm",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Reading_Endosymbiosis.txt",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "reading",
+      "type_ok": true,
+      "unit": "Unit 2: Cell Structure",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "llm",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Reading_Fermentation_Bread.txt",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "reading",
+      "type_ok": true,
+      "unit": "Unit 3: Cell Energy",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Reading_Why_Water_Is_Weird.txt",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "reading",
+      "type_ok": true,
+      "unit": "Unit 1: Chemistry of Life",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "llm",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "U1 macromolecules notes.md",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "lecture",
+      "type_ok": true,
+      "unit": "Unit 1: Chemistry of Life",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Unit 2 Test - Cell Structure.pdf",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "test",
+      "type_ok": true,
+      "unit": "Unit 2: Cell Structure",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Unit1_Quiz_Macromolecules.pdf",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "quiz",
+      "type_ok": true,
+      "unit": "Unit 1: Chemistry of Life",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Unit1_Water_and_Carbon_Slides.pptx",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "lecture",
+      "type_ok": true,
+      "unit": "Unit 1: Chemistry of Life",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Unit3_Quiz_Cell_Energy.pdf",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "quiz",
+      "type_ok": true,
+      "unit": "Unit 3: Cell Energy",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "Unit4_Test_Genetics_scanned.pdf",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "test",
+      "type_ok": true,
+      "unit": "Unit 4: Cell Division and Genetics",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "llm",
+      "needs_vision": true,
+      "read_ok": true
+    },
+    {
+      "file": "cell_membrane_transport_notes.txt",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "lecture",
+      "type_ok": true,
+      "unit": "Unit 2: Cell Structure",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "auto",
+      "needs_vision": false,
+      "read_ok": true
+    },
+    {
+      "file": "organelle_matching_scan.png",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "worksheet",
+      "type_ok": true,
+      "unit": "Unit 2: Cell Structure",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "llm",
+      "needs_vision": true,
+      "read_ok": true
+    },
+    {
+      "file": "whiteboard_atp_cycle.jpg",
+      "how": "new",
+      "seconds": 0.0,
+      "type": "lecture",
+      "type_ok": true,
+      "unit": "Unit 3: Cell Energy",
+      "unit_ok": true,
+      "status": "filed",
+      "reason": null,
+      "source": "llm",
+      "needs_vision": true,
+      "read_ok": true
+    }
+  ],
+  "queries": [
+    {
+      "mode": "keyword",
+      "q": "how do plants turn sunlight into food",
+      "kind": "paraphrase",
+      "top3": [
+        "Cell_Organelles_Slides.pptx",
+        "Macromolecules_Worksheet.docx",
+        "Unit3_Quiz_Cell_Energy.pdf"
+      ],
+      "hit@1": 0.0,
+      "hit@5": 0.0,
+      "recall@5": 0.0,
+      "mrr": 0.125
+    },
+    {
+      "mode": "keyword",
+      "q": "why does bread dough get bigger",
+      "kind": "paraphrase",
+      "top3": [
+        "Reading_Fermentation_Bread.txt",
+        "Reading_Why_Water_Is_Weird.txt",
+        "Unit1_Quiz_Macromolecules.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "keyword",
+      "q": "what happens to an egg soaked in syrup",
+      "kind": "paraphrase",
+      "top3": [
+        "Osmosis_Egg_Lab.pdf",
+        "Final_Exam_Review_Guide.docx",
+        "Reading_Why_Water_Is_Weird.txt"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "keyword",
+      "q": "predicting which traits kids inherit from their parents",
+      "kind": "paraphrase",
+      "top3": [
+        "Mendel_Genetics_Notes.md",
+        "Reading_Endosymbiosis.txt",
+        "Reading_CRISPR_News.txt"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "keyword",
+      "q": "how cells copy themselves so the body can grow",
+      "kind": "paraphrase",
+      "top3": [
+        "Mitosis_Meiosis_Slides.pptx",
+        "Parent_Welcome_Letter.docx",
+        "organelle_matching_scan.png"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 0.5,
+      "mrr": 1.0
+    },
+    {
+      "mode": "keyword",
+      "q": "rewriting DNA to cure diseases",
+      "kind": "paraphrase",
+      "top3": [
+        "Reading_CRISPR_News.txt",
+        "Cell_Organelles_Slides.pptx",
+        "Mitosis_Meiosis_Slides.pptx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "keyword",
+      "q": "how many points is late homework worth",
+      "kind": "paraphrase",
+      "top3": [
+        "Bio10_Syllabus_Fall2026.docx",
+        "Unit4_Test_Genetics_scanned.pdf",
+        "Macromolecules_Worksheet.docx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "keyword",
+      "q": "rules for staying safe around chemicals and glass",
+      "kind": "paraphrase",
+      "top3": [
+        "Lab_Safety_Contract.pdf",
+        "Unit1_Water_and_Carbon_Slides.pptx",
+        "Mitosis_Meiosis_Slides.pptx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "keyword",
+      "q": "why lakes don't freeze solid in winter",
+      "kind": "paraphrase",
+      "top3": [
+        "Reading_Why_Water_Is_Weird.txt",
+        "Organelle_Analogy_Worksheet.docx",
+        "Reading_Fermentation_Bread.txt"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "keyword",
+      "q": "the theory that some cell parts used to be bacteria",
+      "kind": "paraphrase",
+      "top3": [
+        "Reading_Endosymbiosis.txt",
+        "Organelle_Analogy_Worksheet.docx",
+        "Reading_CRISPR_News.txt"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "keyword",
+      "q": "how cells get energy out of sugar",
+      "kind": "paraphrase",
+      "top3": [
+        "Reading_Fermentation_Bread.txt",
+        "Parent_Welcome_Letter.docx",
+        "Photosynthesis_vs_Respiration_Worksheet.docx"
+      ],
+      "hit@1": 0.0,
+      "hit@5": 1.0,
+      "recall@5": 0.5,
+      "mrr": 0.2
+    },
+    {
+      "mode": "keyword",
+      "q": "comparing parts of a cell to parts of a town",
+      "kind": "paraphrase",
+      "top3": [
+        "Unit 2 Test - Cell Structure.pdf",
+        "Organelle_Analogy_Worksheet.docx",
+        "Final_Exam_Review_Guide.docx"
+      ],
+      "hit@1": 0.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 0.5
+    },
+    {
+      "mode": "keyword",
+      "q": "what's on the big end-of-semester exam",
+      "kind": "paraphrase",
+      "top3": [
+        "Photosynthesis_Slides.pptx",
+        "Final_Exam_Review_Guide.docx",
+        "Organelle_Analogy_Worksheet.docx"
+      ],
+      "hit@1": 0.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 0.5
+    },
+    {
+      "mode": "keyword",
+      "q": "how my lab write-up will be scored",
+      "kind": "paraphrase",
+      "top3": [
+        "Enzyme_Lab_Toothpickase.pdf",
+        "Bio10_Syllabus_Fall2026.docx",
+        "Lab_Safety_Contract.pdf"
+      ],
+      "hit@1": 0.0,
+      "hit@5": 0.0,
+      "recall@5": 0.0,
+      "mrr": 0.07692307692307693
+    },
+    {
+      "mode": "keyword",
+      "q": "when is there no school around the holidays",
+      "kind": "paraphrase",
+      "top3": [
+        "Course_Calendar_Fall2026.txt",
+        "Cell_Organelles_Slides.pptx",
+        "Macromolecules_Worksheet.docx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "keyword",
+      "q": "toothpickase",
+      "kind": "exact",
+      "top3": [
+        "Enzyme_Lab_Toothpickase.pdf",
+        "Course_Calendar_Fall2026.txt"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "keyword",
+      "q": "Calvin cycle stroma",
+      "kind": "exact",
+      "top3": [
+        "Photosynthesis_Slides.pptx",
+        "Mitosis_Meiosis_Slides.pptx",
+        "Onion_Root_Tip_Lab.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "keyword",
+      "q": "sodium-potassium pump",
+      "kind": "exact",
+      "top3": [
+        "cell_membrane_transport_notes.txt"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "keyword",
+      "q": "dehydration synthesis hydrolysis",
+      "kind": "exact",
+      "top3": [
+        "Macromolecules_Worksheet.docx",
+        "U1 macromolecules notes.md"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "keyword",
+      "q": "Unit 2 test",
+      "kind": "exact",
+      "top3": [
+        "Bio10_Syllabus_Fall2026.docx",
+        "Course_Calendar_Fall2026.txt",
+        "Unit4_Test_Genetics_scanned.pdf"
+      ],
+      "hit@1": 0.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 0.25
+    },
+    {
+      "mode": "keyword",
+      "q": "ET50 leaf disks",
+      "kind": "exact",
+      "top3": [
+        "Leaf_Disk_Lab.pdf",
+        "Course_Calendar_Fall2026.txt"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "keyword",
+      "q": "Lynn Margulis",
+      "kind": "exact",
+      "top3": [
+        "Reading_Endosymbiosis.txt"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "keyword",
+      "q": "heterozygous Punnett square",
+      "kind": "exact",
+      "top3": [
+        "Punnett_Square_Practice.docx",
+        "Bio10_Syllabus_Fall2026.docx",
+        "Mendel_Genetics_Notes.md"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "keyword",
+      "q": "Golgi lysosome matching",
+      "kind": "exact",
+      "top3": [
+        "organelle_matching_scan.png",
+        "Organelle_Analogy_Worksheet.docx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "keyword",
+      "q": "crossing over gamete chromosomes",
+      "kind": "exact",
+      "top3": [
+        "Unit4_Test_Genetics_scanned.pdf",
+        "Mitosis_Meiosis_Slides.pptx",
+        "Punnett_Square_Practice.docx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "how do plants turn sunlight into food",
+      "kind": "paraphrase",
+      "top3": [
+        "Photosynthesis_Slides.pptx",
+        "Cell_Organelles_Slides.pptx",
+        "Leaf_Disk_Lab.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "why does bread dough get bigger",
+      "kind": "paraphrase",
+      "top3": [
+        "Reading_Fermentation_Bread.txt",
+        "Reading_Why_Water_Is_Weird.txt",
+        "Leaf_Disk_Lab.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "what happens to an egg soaked in syrup",
+      "kind": "paraphrase",
+      "top3": [
+        "Osmosis_Egg_Lab.pdf",
+        "Leaf_Disk_Lab.pdf",
+        "Reading_Why_Water_Is_Weird.txt"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "predicting which traits kids inherit from their parents",
+      "kind": "paraphrase",
+      "top3": [
+        "Punnett_Square_Practice.docx",
+        "Mendel_Genetics_Notes.md",
+        "Reading_CRISPR_News.txt"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "how cells copy themselves so the body can grow",
+      "kind": "paraphrase",
+      "top3": [
+        "Mitosis_Meiosis_Slides.pptx",
+        "organelle_matching_scan.png",
+        "Organelle_Analogy_Worksheet.docx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "rewriting DNA to cure diseases",
+      "kind": "paraphrase",
+      "top3": [
+        "Reading_CRISPR_News.txt",
+        "Reading_Endosymbiosis.txt",
+        "Reading_Why_Water_Is_Weird.txt"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "how many points is late homework worth",
+      "kind": "paraphrase",
+      "top3": [
+        "Lab_Report_Rubric.docx",
+        "Bio10_Syllabus_Fall2026.docx",
+        "Unit1_Quiz_Macromolecules.pdf"
+      ],
+      "hit@1": 0.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 0.5
+    },
+    {
+      "mode": "semantic",
+      "q": "rules for staying safe around chemicals and glass",
+      "kind": "paraphrase",
+      "top3": [
+        "Lab_Safety_Contract.pdf",
+        "Lab_Report_Rubric.docx",
+        "Enzyme_Lab_Toothpickase.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "why lakes don't freeze solid in winter",
+      "kind": "paraphrase",
+      "top3": [
+        "Reading_Why_Water_Is_Weird.txt",
+        "Unit1_Water_and_Carbon_Slides.pptx",
+        "Reading_Fermentation_Bread.txt"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "the theory that some cell parts used to be bacteria",
+      "kind": "paraphrase",
+      "top3": [
+        "Reading_Endosymbiosis.txt",
+        "Organelle_Analogy_Worksheet.docx",
+        "organelle_matching_scan.png"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "how cells get energy out of sugar",
+      "kind": "paraphrase",
+      "top3": [
+        "Cellular_Respiration_Notes.docx",
+        "whiteboard_atp_cycle.jpg",
+        "Unit3_Quiz_Cell_Energy.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "comparing parts of a cell to parts of a town",
+      "kind": "paraphrase",
+      "top3": [
+        "Organelle_Analogy_Worksheet.docx",
+        "organelle_matching_scan.png",
+        "Cell_Organelles_Slides.pptx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "what's on the big end-of-semester exam",
+      "kind": "paraphrase",
+      "top3": [
+        "Final_Exam_Review_Guide.docx",
+        "Unit4_Test_Genetics_scanned.pdf",
+        "Bio10_Syllabus_Fall2026.docx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "how my lab write-up will be scored",
+      "kind": "paraphrase",
+      "top3": [
+        "Lab_Report_Rubric.docx",
+        "Leaf_Disk_Lab.pdf",
+        "Enzyme_Lab_Toothpickase.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "when is there no school around the holidays",
+      "kind": "paraphrase",
+      "top3": [
+        "Course_Calendar_Fall2026.txt",
+        "Bio10_Syllabus_Fall2026.docx",
+        "Final_Exam_Review_Guide.docx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "toothpickase",
+      "kind": "exact",
+      "top3": [
+        "Enzyme_Lab_Toothpickase.pdf",
+        "Reading_CRISPR_News.txt",
+        "Leaf_Disk_Lab.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "Calvin cycle stroma",
+      "kind": "exact",
+      "top3": [
+        "Photosynthesis_Slides.pptx",
+        "Photosynthesis_vs_Respiration_Worksheet.docx",
+        "Cellular_Respiration_Notes.docx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "sodium-potassium pump",
+      "kind": "exact",
+      "top3": [
+        "cell_membrane_transport_notes.txt",
+        "whiteboard_atp_cycle.jpg",
+        "Leaf_Disk_Lab.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "dehydration synthesis hydrolysis",
+      "kind": "exact",
+      "top3": [
+        "U1 macromolecules notes.md",
+        "Macromolecules_Worksheet.docx",
+        "Unit1_Quiz_Macromolecules.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "Unit 2 test",
+      "kind": "exact",
+      "top3": [
+        "Unit 2 Test - Cell Structure.pdf",
+        "Unit4_Test_Genetics_scanned.pdf",
+        "Unit3_Quiz_Cell_Energy.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "ET50 leaf disks",
+      "kind": "exact",
+      "top3": [
+        "Leaf_Disk_Lab.pdf",
+        "Onion_Root_Tip_Lab.pdf",
+        "Osmosis_Egg_Lab.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "Lynn Margulis",
+      "kind": "exact",
+      "top3": [
+        "Reading_Endosymbiosis.txt",
+        "Cell_Organelles_Slides.pptx",
+        "Reading_Fermentation_Bread.txt"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "heterozygous Punnett square",
+      "kind": "exact",
+      "top3": [
+        "Punnett_Square_Practice.docx",
+        "Mendel_Genetics_Notes.md",
+        "Unit4_Test_Genetics_scanned.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 0.6666666666666666,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "Golgi lysosome matching",
+      "kind": "exact",
+      "top3": [
+        "organelle_matching_scan.png",
+        "Organelle_Analogy_Worksheet.docx",
+        "Cell_Organelles_Slides.pptx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "semantic",
+      "q": "crossing over gamete chromosomes",
+      "kind": "exact",
+      "top3": [
+        "Mitosis_Meiosis_Slides.pptx",
+        "Unit4_Test_Genetics_scanned.pdf",
+        "Punnett_Square_Practice.docx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "how do plants turn sunlight into food",
+      "kind": "paraphrase",
+      "top3": [
+        "Cell_Organelles_Slides.pptx",
+        "Photosynthesis_vs_Respiration_Worksheet.docx",
+        "Photosynthesis_Slides.pptx"
+      ],
+      "hit@1": 0.0,
+      "hit@5": 1.0,
+      "recall@5": 0.5,
+      "mrr": 0.3333333333333333
+    },
+    {
+      "mode": "hybrid",
+      "q": "why does bread dough get bigger",
+      "kind": "paraphrase",
+      "top3": [
+        "Reading_Fermentation_Bread.txt",
+        "Reading_Why_Water_Is_Weird.txt",
+        "Unit1_Quiz_Macromolecules.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "what happens to an egg soaked in syrup",
+      "kind": "paraphrase",
+      "top3": [
+        "Osmosis_Egg_Lab.pdf",
+        "Reading_Why_Water_Is_Weird.txt",
+        "Enzyme_Lab_Toothpickase.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "predicting which traits kids inherit from their parents",
+      "kind": "paraphrase",
+      "top3": [
+        "Mendel_Genetics_Notes.md",
+        "Punnett_Square_Practice.docx",
+        "Reading_CRISPR_News.txt"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "how cells copy themselves so the body can grow",
+      "kind": "paraphrase",
+      "top3": [
+        "Mitosis_Meiosis_Slides.pptx",
+        "organelle_matching_scan.png",
+        "Onion_Root_Tip_Lab.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "rewriting DNA to cure diseases",
+      "kind": "paraphrase",
+      "top3": [
+        "Reading_CRISPR_News.txt",
+        "Cell_Organelles_Slides.pptx",
+        "Reading_Endosymbiosis.txt"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "how many points is late homework worth",
+      "kind": "paraphrase",
+      "top3": [
+        "Bio10_Syllabus_Fall2026.docx",
+        "Lab_Report_Rubric.docx",
+        "Leaf_Disk_Lab.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "rules for staying safe around chemicals and glass",
+      "kind": "paraphrase",
+      "top3": [
+        "Lab_Safety_Contract.pdf",
+        "Unit1_Water_and_Carbon_Slides.pptx",
+        "Leaf_Disk_Lab.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "why lakes don't freeze solid in winter",
+      "kind": "paraphrase",
+      "top3": [
+        "Reading_Why_Water_Is_Weird.txt",
+        "Reading_Fermentation_Bread.txt",
+        "Unit1_Water_and_Carbon_Slides.pptx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "the theory that some cell parts used to be bacteria",
+      "kind": "paraphrase",
+      "top3": [
+        "Reading_Endosymbiosis.txt",
+        "Organelle_Analogy_Worksheet.docx",
+        "Cell_Organelles_Slides.pptx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "how cells get energy out of sugar",
+      "kind": "paraphrase",
+      "top3": [
+        "Reading_Fermentation_Bread.txt",
+        "Cellular_Respiration_Notes.docx",
+        "Unit3_Quiz_Cell_Energy.pdf"
+      ],
+      "hit@1": 0.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 0.5
+    },
+    {
+      "mode": "hybrid",
+      "q": "comparing parts of a cell to parts of a town",
+      "kind": "paraphrase",
+      "top3": [
+        "Organelle_Analogy_Worksheet.docx",
+        "Unit 2 Test - Cell Structure.pdf",
+        "Cell_Organelles_Slides.pptx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "what's on the big end-of-semester exam",
+      "kind": "paraphrase",
+      "top3": [
+        "Final_Exam_Review_Guide.docx",
+        "Bio10_Syllabus_Fall2026.docx",
+        "Unit3_Quiz_Cell_Energy.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "how my lab write-up will be scored",
+      "kind": "paraphrase",
+      "top3": [
+        "Enzyme_Lab_Toothpickase.pdf",
+        "Lab_Safety_Contract.pdf",
+        "Bio10_Syllabus_Fall2026.docx"
+      ],
+      "hit@1": 0.0,
+      "hit@5": 0.0,
+      "recall@5": 0.0,
+      "mrr": 0.14285714285714285
+    },
+    {
+      "mode": "hybrid",
+      "q": "when is there no school around the holidays",
+      "kind": "paraphrase",
+      "top3": [
+        "Course_Calendar_Fall2026.txt",
+        "Final_Exam_Review_Guide.docx",
+        "Bio10_Syllabus_Fall2026.docx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "toothpickase",
+      "kind": "exact",
+      "top3": [
+        "Enzyme_Lab_Toothpickase.pdf",
+        "Course_Calendar_Fall2026.txt",
+        "Reading_CRISPR_News.txt"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "Calvin cycle stroma",
+      "kind": "exact",
+      "top3": [
+        "Photosynthesis_Slides.pptx",
+        "Photosynthesis_vs_Respiration_Worksheet.docx",
+        "Cellular_Respiration_Notes.docx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "sodium-potassium pump",
+      "kind": "exact",
+      "top3": [
+        "cell_membrane_transport_notes.txt",
+        "whiteboard_atp_cycle.jpg",
+        "Leaf_Disk_Lab.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "dehydration synthesis hydrolysis",
+      "kind": "exact",
+      "top3": [
+        "Macromolecules_Worksheet.docx",
+        "U1 macromolecules notes.md",
+        "Unit1_Quiz_Macromolecules.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "Unit 2 test",
+      "kind": "exact",
+      "top3": [
+        "Unit 2 Test - Cell Structure.pdf",
+        "Unit4_Test_Genetics_scanned.pdf",
+        "Bio10_Syllabus_Fall2026.docx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "ET50 leaf disks",
+      "kind": "exact",
+      "top3": [
+        "Leaf_Disk_Lab.pdf",
+        "Course_Calendar_Fall2026.txt",
+        "Onion_Root_Tip_Lab.pdf"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "Lynn Margulis",
+      "kind": "exact",
+      "top3": [
+        "Reading_Endosymbiosis.txt",
+        "Cell_Organelles_Slides.pptx",
+        "Reading_Fermentation_Bread.txt"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "heterozygous Punnett square",
+      "kind": "exact",
+      "top3": [
+        "Punnett_Square_Practice.docx",
+        "Mendel_Genetics_Notes.md",
+        "Final_Exam_Review_Guide.docx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "Golgi lysosome matching",
+      "kind": "exact",
+      "top3": [
+        "organelle_matching_scan.png",
+        "Organelle_Analogy_Worksheet.docx",
+        "Cell_Organelles_Slides.pptx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "mode": "hybrid",
+      "q": "crossing over gamete chromosomes",
+      "kind": "exact",
+      "top3": [
+        "Unit4_Test_Genetics_scanned.pdf",
+        "Mitosis_Meiosis_Slides.pptx",
+        "Punnett_Square_Practice.docx"
+      ],
+      "hit@1": 1.0,
+      "hit@5": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    }
+  ],
+  "models": {
+    "labeler": "gemini-3.6-flash",
+    "labeler_fallback": "gemini-3.5-flash-lite"
+  }
+}

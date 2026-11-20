@@ -12,7 +12,8 @@ from app.shared.agent_router import make_router
 from app.shared.embeddings import get_embedder
 from app.shared.settings import AGENTS_DIR, FILES_DIR
 
-from .pipeline import DOC_TYPES, ingest, reprocess, reprocess_class
+from . import ai_queue
+from .pipeline import AI_CALLS, DOC_TYPES, ai_available, ingest, reprocess, reprocess_class
 
 router = make_router("filing")
 SAMPLE_COURSE = AGENTS_DIR / "sample_data" / "biology_course"
@@ -89,8 +90,23 @@ def reprocess_one(file_id: int):
 
 @router.post("/reprocess")
 def reprocess_many(class_id: int, which: Literal["needs_review", "not_teacher"] = "needs_review"):
-    """Re-check the Needs-review queue (default) or every file not labeled by the teacher."""
+    """Re-check the Needs-review queue (default) or every file not labeled by the teacher.
+    Uses the batched AI queue: several files per request."""
     return reprocess_class(class_id, which)
+
+
+@router.post("/ai-queue/run")
+def run_ai_queue(class_id: int | None = None):
+    """Run the batched AI queue now instead of waiting for the background worker."""
+    return ai_queue.process_pending(class_id, force=True, until_empty=True)
+
+
+@router.get("/ai-queue")
+def ai_queue_status(class_id: int | None = None):
+    rows = ai_queue._pending(class_id)
+    return {"pending": len(rows), "ai_available": ai_available(), "ai_requests_since_start": AI_CALLS["requests"],
+            "files": [{"file_id": r["file_id"], "original_name": r["original_name"], "reason": r["review_reason"]}
+                      for r in rows]}
 
 
 @router.get("/files/{file_id}/download")

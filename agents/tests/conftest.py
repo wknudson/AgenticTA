@@ -19,6 +19,8 @@ for _var in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY"):
     os.environ[_var] = ""
 # Offline, deterministic embeddings (hashing, not semantic) so search plumbing is testable.
 os.environ["AGENTICTA_EMBEDDINGS"] = "fake"
+# No background AI-queue thread: tests drive ai_queue.process_pending() themselves.
+os.environ["AGENTICTA_AI_QUEUE_WORKER"] = "0"
 
 _conn = sqlite3.connect(os.environ["SQLITE_DB_PATH"])
 for name in ("schema.sql", "seed.sql"):

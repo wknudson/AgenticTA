@@ -19,6 +19,7 @@ interface Props {
 }
 
 const SOURCE_TEXT: Record<string, string> = {
+  auto: 'Labeled automatically from the file name and its content (no AI call)',
   llm: 'Labeled by AI',
   'llm-fallback': 'Labeled by the backup AI model',
   heuristic: 'Guessed from the file name (no AI)',
