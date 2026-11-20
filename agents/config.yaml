@@ -18,9 +18,20 @@ agents:
     kind: Fixed workflow (not an agent)
     pattern: Sequential pipeline
     models:
-      labeler:   {provider: google_genai, model: gemini-3.8-flash}   # cheap + multimodal (images, scans)
+      labeler:          {provider: google_genai, model: gemini-3.6-flash}       # cheap + multimodal (images, scans), stable
+      labeler_fallback: {provider: google_genai, model: gemini-3.5-flash-lite}  # used if the labeler errors or times out
     embeddings:
-      model: BAAI/bge-small-en-v1.5   # open-source, runs in-process via fastembed (384 dims)
+      provider: google_genai       # API embeddings: no model download; document text is sent to Google
+      model: gemini-embedding-2
+      dims: 768                    # changing model or dims rebuilds the vector index (POST /agents/filing/reindex)
+    search:
+      # Meaning-based hits below this cosine similarity are dropped, so a question with nothing
+      # relevant in the class returns "no matches" instead of random files.  Measured with
+      # gemini-embedding-2: questions about other classes topped out at 0.621; real matches mostly
+      # scored 0.70+, but logistics questions sit lower ("no school around the holidays" -> the
+      # course calendar at 0.645).  0.65 cut that one; 0.63 keeps it and still blocks all 12
+      # off-topic questions.  Re-measure if the embedding model changes (evals/filing_eval.py).
+      min_similarity: 0.63
 
   scheduler:                    # owner: Teammate B
     title: Scheduler

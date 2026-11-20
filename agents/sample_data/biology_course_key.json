@@ -1,0 +1,260 @@
+[
+  {
+    "file": "Bio10_Syllabus_Fall2026.docx",
+    "doc_types": [
+      "syllabus"
+    ],
+    "unit": null,
+    "needs_vision": false
+  },
+  {
+    "file": "Lab_Report_Rubric.docx",
+    "doc_types": [
+      "rubric"
+    ],
+    "unit": null,
+    "needs_vision": false
+  },
+  {
+    "file": "Course_Calendar_Fall2026.txt",
+    "doc_types": [
+      "schedule"
+    ],
+    "unit": null,
+    "needs_vision": false
+  },
+  {
+    "file": "Lab_Safety_Contract.pdf",
+    "doc_types": [
+      "other",
+      "lab"
+    ],
+    "unit": null,
+    "needs_vision": false
+  },
+  {
+    "file": "Parent_Welcome_Letter.docx",
+    "doc_types": [
+      "other"
+    ],
+    "unit": null,
+    "needs_vision": false
+  },
+  {
+    "file": "Final_Exam_Review_Guide.docx",
+    "doc_types": [
+      "worksheet",
+      "other"
+    ],
+    "unit": null,
+    "needs_vision": false
+  },
+  {
+    "file": "Unit1_Water_and_Carbon_Slides.pptx",
+    "doc_types": [
+      "lecture"
+    ],
+    "unit": "Unit 1: Chemistry of Life",
+    "needs_vision": false
+  },
+  {
+    "file": "U1 macromolecules notes.md",
+    "doc_types": [
+      "lecture"
+    ],
+    "unit": "Unit 1: Chemistry of Life",
+    "needs_vision": false
+  },
+  {
+    "file": "Macromolecules_Worksheet.docx",
+    "doc_types": [
+      "worksheet"
+    ],
+    "unit": "Unit 1: Chemistry of Life",
+    "needs_vision": false
+  },
+  {
+    "file": "Enzyme_Lab_Toothpickase.pdf",
+    "doc_types": [
+      "lab"
+    ],
+    "unit": "Unit 1: Chemistry of Life",
+    "needs_vision": false
+  },
+  {
+    "file": "Unit1_Quiz_Macromolecules.pdf",
+    "doc_types": [
+      "quiz"
+    ],
+    "unit": "Unit 1: Chemistry of Life",
+    "needs_vision": false
+  },
+  {
+    "file": "Reading_Why_Water_Is_Weird.txt",
+    "doc_types": [
+      "reading"
+    ],
+    "unit": "Unit 1: Chemistry of Life",
+    "needs_vision": false
+  },
+  {
+    "file": "Cell_Organelles_Slides.pptx",
+    "doc_types": [
+      "lecture"
+    ],
+    "unit": "Unit 2: Cell Structure",
+    "needs_vision": false
+  },
+  {
+    "file": "cell_membrane_transport_notes.txt",
+    "doc_types": [
+      "lecture"
+    ],
+    "unit": "Unit 2: Cell Structure",
+    "needs_vision": false
+  },
+  {
+    "file": "Organelle_Analogy_Worksheet.docx",
+    "doc_types": [
+      "worksheet"
+    ],
+    "unit": "Unit 2: Cell Structure",
+    "needs_vision": false
+  },
+  {
+    "file": "Osmosis_Egg_Lab.pdf",
+    "doc_types": [
+      "lab"
+    ],
+    "unit": "Unit 2: Cell Structure",
+    "needs_vision": false
+  },
+  {
+    "file": "Unit 2 Test - Cell Structure.pdf",
+    "doc_types": [
+      "test"
+    ],
+    "unit": "Unit 2: Cell Structure",
+    "needs_vision": false
+  },
+  {
+    "file": "organelle_matching_scan.png",
+    "doc_types": [
+      "worksheet"
+    ],
+    "unit": "Unit 2: Cell Structure",
+    "needs_vision": true
+  },
+  {
+    "file": "Reading_Endosymbiosis.txt",
+    "doc_types": [
+      "reading"
+    ],
+    "unit": "Unit 2: Cell Structure",
+    "needs_vision": false
+  },
+  {
+    "file": "Photosynthesis_Slides.pptx",
+    "doc_types": [
+      "lecture"
+    ],
+    "unit": "Unit 3: Cell Energy",
+    "needs_vision": false
+  },
+  {
+    "file": "Cellular_Respiration_Notes.docx",
+    "doc_types": [
+      "lecture"
+    ],
+    "unit": "Unit 3: Cell Energy",
+    "needs_vision": false
+  },
+  {
+    "file": "Photosynthesis_vs_Respiration_Worksheet.docx",
+    "doc_types": [
+      "worksheet"
+    ],
+    "unit": "Unit 3: Cell Energy",
+    "needs_vision": false
+  },
+  {
+    "file": "Leaf_Disk_Lab.pdf",
+    "doc_types": [
+      "lab"
+    ],
+    "unit": "Unit 3: Cell Energy",
+    "needs_vision": false
+  },
+  {
+    "file": "Unit3_Quiz_Cell_Energy.pdf",
+    "doc_types": [
+      "quiz"
+    ],
+    "unit": "Unit 3: Cell Energy",
+    "needs_vision": false
+  },
+  {
+    "file": "whiteboard_atp_cycle.jpg",
+    "doc_types": [
+      "lecture"
+    ],
+    "unit": "Unit 3: Cell Energy",
+    "needs_vision": true
+  },
+  {
+    "file": "Reading_Fermentation_Bread.txt",
+    "doc_types": [
+      "reading"
+    ],
+    "unit": "Unit 3: Cell Energy",
+    "needs_vision": false
+  },
+  {
+    "file": "Mitosis_Meiosis_Slides.pptx",
+    "doc_types": [
+      "lecture"
+    ],
+    "unit": "Unit 4: Cell Division and Genetics",
+    "needs_vision": false
+  },
+  {
+    "file": "Mendel_Genetics_Notes.md",
+    "doc_types": [
+      "lecture"
+    ],
+    "unit": "Unit 4: Cell Division and Genetics",
+    "needs_vision": false
+  },
+  {
+    "file": "Punnett_Square_Practice.docx",
+    "doc_types": [
+      "worksheet"
+    ],
+    "unit": "Unit 4: Cell Division and Genetics",
+    "needs_vision": false
+  },
+  {
+    "file": "Onion_Root_Tip_Lab.pdf",
+    "doc_types": [
+      "lab"
+    ],
+    "unit": "Unit 4: Cell Division and Genetics",
+    "needs_vision": false
+  },
+  {
+    "file": "Unit4_Test_Genetics_scanned.pdf",
+    "doc_types": [
+      "test"
+    ],
+    "unit": "Unit 4: Cell Division and Genetics",
+    "needs_vision": true
+  },
+  {
+    "file": "Reading_CRISPR_News.txt",
+    "doc_types": [
+      "reading"
+    ],
+    "unit": "Unit 4: Cell Division and Genetics",
+    "needs_vision": false
+  }
+]

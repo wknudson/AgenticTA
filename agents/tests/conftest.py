@@ -14,6 +14,15 @@ os.environ["SQLITE_DB_PATH"] = str(_tmp / "test.sqlite")
 os.environ["LANGSMITH_TRACING"] = "false"  # tests never send traces
 # Ignore everyone's real agents/app/agents/<agent>/.env files; tests write their own here.
 os.environ["AGENTICTA_AGENT_ENV_DIR"] = str(_tmp / "agent-env")
+# ...and never fall back to real keys from the project .env (empty string = "not set").
+for _var in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY"):
+    os.environ[_var] = ""
+# Offline, deterministic embeddings (hashing, not semantic) so search plumbing is testable.
+os.environ["AGENTICTA_EMBEDDINGS"] = "fake"
+# Fake embeddings aren't semantic, so the real similarity cutoff (config.yaml) would drop everything.
+os.environ["AGENTICTA_MIN_SIMILARITY"] = "0"
+# No background AI-queue thread: tests drive ai_queue.process_pending() themselves.
+os.environ["AGENTICTA_AI_QUEUE_WORKER"] = "0"
 
 _conn = sqlite3.connect(os.environ["SQLITE_DB_PATH"])
 for name in ("schema.sql", "seed.sql"):

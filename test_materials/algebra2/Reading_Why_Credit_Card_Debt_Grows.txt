@@ -1,0 +1,3 @@
+Reading: why credit card debt grows so fast
+
+A card with 24% yearly interest compounded monthly charges about 2% a month. If you owe $1,000 and pay nothing, after one year you owe about $1,268, and after five years over $3,000. That is exponential growth working against you. Paying only the minimum keeps the balance growing for years.

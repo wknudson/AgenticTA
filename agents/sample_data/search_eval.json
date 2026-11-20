@@ -1,0 +1,30 @@
+{
+  "description": "Search questions for the sample Biology Honors course. 'relevant' = files that correctly answer it. kind: 'paraphrase' uses words NOT in the documents (tests meaning-based search); 'exact' uses words that ARE in them (tests keyword search).",
+  "queries": [
+    {"q": "how do plants turn sunlight into food", "kind": "paraphrase", "relevant": ["Photosynthesis_Slides.pptx", "Leaf_Disk_Lab.pdf"]},
+    {"q": "why does bread dough get bigger", "kind": "paraphrase", "relevant": ["Reading_Fermentation_Bread.txt"]},
+    {"q": "what happens to an egg soaked in syrup", "kind": "paraphrase", "relevant": ["Osmosis_Egg_Lab.pdf"]},
+    {"q": "predicting which traits kids inherit from their parents", "kind": "paraphrase", "relevant": ["Punnett_Square_Practice.docx", "Mendel_Genetics_Notes.md"]},
+    {"q": "how cells copy themselves so the body can grow", "kind": "paraphrase", "relevant": ["Mitosis_Meiosis_Slides.pptx", "Onion_Root_Tip_Lab.pdf"]},
+    {"q": "rewriting DNA to cure diseases", "kind": "paraphrase", "relevant": ["Reading_CRISPR_News.txt"]},
+    {"q": "how many points is late homework worth", "kind": "paraphrase", "relevant": ["Bio10_Syllabus_Fall2026.docx"]},
+    {"q": "rules for staying safe around chemicals and glass", "kind": "paraphrase", "relevant": ["Lab_Safety_Contract.pdf"]},
+    {"q": "why lakes don't freeze solid in winter", "kind": "paraphrase", "relevant": ["Reading_Why_Water_Is_Weird.txt", "Unit1_Water_and_Carbon_Slides.pptx"]},
+    {"q": "the theory that some cell parts used to be bacteria", "kind": "paraphrase", "relevant": ["Reading_Endosymbiosis.txt"]},
+    {"q": "how cells get energy out of sugar", "kind": "paraphrase", "relevant": ["Cellular_Respiration_Notes.docx", "whiteboard_atp_cycle.jpg"]},
+    {"q": "comparing parts of a cell to parts of a town", "kind": "paraphrase", "relevant": ["Organelle_Analogy_Worksheet.docx"]},
+    {"q": "what's on the big end-of-semester exam", "kind": "paraphrase", "relevant": ["Final_Exam_Review_Guide.docx", "Bio10_Syllabus_Fall2026.docx"]},
+    {"q": "how my lab write-up will be scored", "kind": "paraphrase", "relevant": ["Lab_Report_Rubric.docx"]},
+    {"q": "when is there no school around the holidays", "kind": "paraphrase", "relevant": ["Course_Calendar_Fall2026.txt"]},
+    {"q": "toothpickase", "kind": "exact", "relevant": ["Enzyme_Lab_Toothpickase.pdf"]},
+    {"q": "Calvin cycle stroma", "kind": "exact", "relevant": ["Photosynthesis_Slides.pptx"]},
+    {"q": "sodium-potassium pump", "kind": "exact", "relevant": ["cell_membrane_transport_notes.txt"]},
+    {"q": "dehydration synthesis hydrolysis", "kind": "exact", "relevant": ["U1 macromolecules notes.md", "Macromolecules_Worksheet.docx"]},
+    {"q": "Unit 2 test", "kind": "exact", "relevant": ["Unit 2 Test - Cell Structure.pdf"]},
+    {"q": "ET50 leaf disks", "kind": "exact", "relevant": ["Leaf_Disk_Lab.pdf"]},
+    {"q": "Lynn Margulis", "kind": "exact", "relevant": ["Reading_Endosymbiosis.txt"]},
+    {"q": "heterozygous Punnett square", "kind": "exact", "relevant": ["Punnett_Square_Practice.docx", "Mendel_Genetics_Notes.md", "Final_Exam_Review_Guide.docx"]},
+    {"q": "Golgi lysosome matching", "kind": "exact", "relevant": ["organelle_matching_scan.png", "Organelle_Analogy_Worksheet.docx"]},
+    {"q": "crossing over gamete chromosomes", "kind": "exact", "relevant": ["Unit4_Test_Genetics_scanned.pdf", "Mitosis_Meiosis_Slides.pptx"]}
+  ]
+}

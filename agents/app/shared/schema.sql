@@ -18,6 +18,13 @@ CREATE TABLE IF NOT EXISTS library_files (
     summary          TEXT,
     dates_json       TEXT,                   -- JSON list of {date, label} found in the document
     label_confidence REAL,                   -- 0..1, below threshold -> status = needs_review
+    label_source     TEXT,                   -- llm | heuristic | teacher
+    review_reason    TEXT,                   -- why it needs review (shown to the teacher)
+    extract_method   TEXT,                   -- text | vision | none
+    page_count       INTEGER,
+    embedded         INTEGER NOT NULL DEFAULT 0,  -- 1 once its chunks are in library_chunk_vec
+    ai_pending       INTEGER NOT NULL DEFAULT 0,  -- 1 = queued for a (batched) AI double-check
+    ai_queued_at     TEXT,
     status           TEXT NOT NULL DEFAULT 'filed',  -- filed | needs_review | draft | archived
     -- versioning (materials agent writes new versions, never overwrites)
     version          INTEGER NOT NULL DEFAULT 1,
@@ -36,10 +43,27 @@ CREATE TABLE IF NOT EXISTS library_chunks (
 );
 CREATE INDEX IF NOT EXISTS idx_library_chunks_file ON library_chunks(file_id, chunk_idx);
 
--- Vector index for semantic search (sqlite-vec).  rowid = library_chunks.chunk_id.
--- 384 dims = BAAI/bge-small-en-v1.5.  Changing the embedding model means changing this.
-CREATE VIRTUAL TABLE IF NOT EXISTS library_chunk_vec USING vec0(
-    embedding float[384] distance_metric=cosine
+-- Keyword index (SQLite FTS5, BM25 ranking), kept in sync with library_chunks by triggers,
+-- so chunks written by any agent are keyword-searchable immediately.
+CREATE VIRTUAL TABLE IF NOT EXISTS library_chunks_fts USING fts5(
+    text, content='library_chunks', content_rowid='chunk_id', tokenize='porter unicode61'
+);
+CREATE TRIGGER IF NOT EXISTS library_chunks_ai AFTER INSERT ON library_chunks BEGIN
+    INSERT INTO library_chunks_fts(rowid, text) VALUES (new.chunk_id, new.text);
+END;
+CREATE TRIGGER IF NOT EXISTS library_chunks_ad AFTER DELETE ON library_chunks BEGIN
+    INSERT INTO library_chunks_fts(library_chunks_fts, rowid, text) VALUES ('delete', old.chunk_id, old.text);
+END;
+CREATE TRIGGER IF NOT EXISTS library_chunks_au AFTER UPDATE OF text ON library_chunks BEGIN
+    INSERT INTO library_chunks_fts(library_chunks_fts, rowid, text) VALUES ('delete', old.chunk_id, old.text);
+    INSERT INTO library_chunks_fts(rowid, text) VALUES (new.chunk_id, new.text);
+END;
+
+-- The vector index (library_chunk_vec, sqlite-vec) is created by app/shared/library.py at
+-- startup, because its size depends on the embedding model in config.yaml.
+CREATE TABLE IF NOT EXISTS library_meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT
 );
 
 -- ============================================================
