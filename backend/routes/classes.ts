@@ -938,14 +938,24 @@ router.delete('/:classId/assignments/:assignmentId', async (req, res) => {
         [aid]
       );
       await query('DELETE FROM assignment_questions WHERE assignment_id = $1', [aid]);
-      // The scheduler's calendar_events only SET NULL on delete, which would leave a published
-      // "... due" entry for an assignment that no longer exists (the table is created by the
-      // agents service, so it may not exist yet).
-      const hasCalendar = await query(
-        `SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'calendar_events'`
+      // Agent-owned rows that only SET NULL on delete would be left behind for an assignment
+      // that no longer exists: a published "... due" calendar entry, and a check-in's games
+      // (still "published", so they'd show in Study games) and its unit package. Deleting the
+      // games also removes students' practice progress (game_item_progress cascades). These
+      // tables are created by the agents service, so they may not exist yet.
+      const agentTables = await query(
+        `SELECT name FROM sqlite_master WHERE type = 'table'
+         AND name IN ('calendar_events', 'study_activities', 'unit_packages')`
       );
-      if (hasCalendar.rows.length > 0) {
+      const hasTable = new Set((agentTables.rows as { name: string }[]).map((r) => r.name));
+      if (hasTable.has('calendar_events')) {
         await query('DELETE FROM calendar_events WHERE assignment_id = $1', [aid]);
+      }
+      if (hasTable.has('study_activities')) {
+        await query('DELETE FROM study_activities WHERE assignment_id = $1', [aid]);
+      }
+      if (hasTable.has('unit_packages')) {
+        await query('DELETE FROM unit_packages WHERE assignment_id = $1', [aid]);
       }
       await query('DELETE FROM assignments WHERE assignment_id = $1', [aid]);
       await query('COMMIT');
