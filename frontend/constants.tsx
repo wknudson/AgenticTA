@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Student, Assignment, StudentStats } from './types';
+import { Student, Assignment } from './types';
 
 export const lyrningRed = '#ba3638';
 
@@ -135,22 +135,4 @@ Free Response — Explain
   }
 ];
 
-export const MOCK_STATS: StudentStats = {
-  understanding: 92,
-  dependency: 55,
-  engagement: 88,
-  history: {
-    understanding: [
-      { week: 1, value: 65 }, { week: 2, value: 70 }, { week: 3, value: 78 },
-      { week: 4, value: 82 }, { week: 5, value: 85 }, { week: 6, value: 92 }
-    ],
-    dependency: [
-      { week: 1, value: 88 }, { week: 2, value: 82 }, { week: 3, value: 75 },
-      { week: 4, value: 68 }, { week: 5, value: 60 }, { week: 6, value: 55 }
-    ],
-    engagement: [
-      { week: 1, value: 70 }, { week: 2, value: 75 }, { week: 3, value: 82 },
-      { week: 4, value: 80 }, { week: 5, value: 88 }, { week: 6, value: 95 }
-    ]
-  }
-};
+

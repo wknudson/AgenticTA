@@ -27,6 +27,12 @@ Install [Ollama](https://ollama.com), then `ollama pull phi3` (or change the mod
 - Offline demo groups synthetic examples with keyword rules and labels them as a demonstration, not model inference.
 - `python -m app.agents.misconceptions.evaluate --offline` scores the synthetic fixture without model calls. Add `--baseline` for local-versus-Haiku evaluation on synthetic text only; its output reports pair precision, recall, F1, and latency. Provider cost is not yet measured.
 
+### Check-in briefing (flipped classroom, `briefing.py`)
+- `GET /checkins`, `GET /briefing`, `POST|PUT /briefing/warmup` (contract in `docs/flipped-classroom-plan.md`). Roster stages, hardest questions (`checkin_item_status`) and most-missed game cards (`game_item_progress`) are plain SQL over enrolled students only; per-student struggles use `app.shared.checkin.learning_signals`.
+- Check-in assignments (`mode = 'checkin'`) can be analyzed **before** their due date; graded assignments still wait for it.
+- Check-in tutor chats are grouped into one transcript per student per `question_id` (oldest message first) with the check-in question as `about` context. Chats without a `question_id` are unchanged.
+- Warm-up: the `local` model when it's reachable (Ollama down, bad JSON or any error falls back), otherwise a deterministic one: the 2 hardest questions on the board and a 2-sentence reteach from the hardest question's rubric/right answer plus the top misconception. Stored in `briefing_warmups`; the teacher's edit sets `edited = 1`. Tests: `tests/test_briefing.py`.
+
 ### Local fixture run (2026-11-19)
 
 One run with the configured `ollama:phi3` model took 27.227 seconds and scored pair precision 1.000, recall 0.667, and F1 0.800 on the six-question synthetic fixture. This is a single local result, not a general quality claim. LangSmith upload was blocked by the current network sandbox, so this run is not visible in the LangSmith project.

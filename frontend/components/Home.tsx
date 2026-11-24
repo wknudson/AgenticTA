@@ -34,7 +34,7 @@ const AGENTS = [
   {
     icon: Gamepad2,
     name: 'Study games',
-    does: 'Turns a unit into flashcards, matching, and fill-in-the-blank games. A second AI checks every card against your material before you see it.',
+    does: 'Turns a unit into flashcards, matching, and fill-in-the-blank games with points, streaks, and levels. A second AI checks every card against your material before you see it.',
     you: 'Approve the set before it is published.',
   },
   {
@@ -46,8 +46,8 @@ const AGENTS = [
   {
     icon: MessagesSquare,
     name: 'AI tutor',
-    does: 'Helps students during assignments using your filed material for that unit. It gives hints and asks questions, and it is blocked from handing over answers.',
-    you: 'Read-only by design. It can explain, never act.',
+    does: 'Helps students work through what they missed on the check-in, using your filed material for that unit. It gives hints and asks questions, and students explain each fix in their own words.',
+    you: 'Choose per check-in: hints only, or the answer after honest tries.',
   },
 ];
 
@@ -229,15 +229,20 @@ const Home: React.FC = () => {
             </li>
             <li>
               <p className="font-semibold text-slate-900">3) Students practice with study games</p>
-              <p className="mt-1">Part one of the assignment: flashcards and matching built from your unit.</p>
+              <p className="mt-1">
+                At home, before class: flashcards, matching, and fill in the blank built from your unit, with points,
+                streaks, and levels.
+              </p>
             </li>
             <li>
-              <p className="font-semibold text-slate-900">4) Students take the assessment with a tutor</p>
-              <p className="mt-1">Part two: the tutor follows your rules and guides with hints, never answers.</p>
+              <p className="font-semibold text-slate-900">4) Students do a check-in with the tutor</p>
+              <p className="mt-1">
+                Graded on completion, not correctness. Every miss gets fixed with the tutor, which follows your rules.
+              </p>
             </li>
             <li>
-              <p className="font-semibold text-slate-900">5) See what the class is stuck on</p>
-              <p className="mt-1">The misconception finder groups confusion across the class and suggests a fix.</p>
+              <p className="font-semibold text-slate-900">5) Walk in knowing what the class is stuck on</p>
+              <p className="mt-1">The misconception finder groups confusion from the check-ins and suggests a fix.</p>
             </li>
             <li>
               <p className="font-semibold text-slate-900">6) Adjust with one instruction</p>
@@ -280,28 +285,50 @@ const Home: React.FC = () => {
             See real learning, not just scores
           </h2>
           <p className="mt-3 text-slate-700 leading-relaxed max-w-3xl">
-            Every submission is scored on three simple metrics, tracked week by week for each student.
+            When points depend on being right, students open another tab and ask a different AI. So we flipped it:
+            the learning happens in practice, the check-in rewards honest work, and every question a student asks our
+            tutor tells you what to reteach.
           </p>
-          <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <p className="text-sm font-semibold text-slate-900">Accuracy</p>
+              <p className="text-sm font-semibold text-slate-900">Practice that's fun</p>
               <p className="mt-2 text-sm text-slate-700 leading-relaxed">
-                The student's average assignment score for the week.
+                Flashcards, matching, and fill in the blank with points, streaks, and levels. Missed cards come back
+                until they stick, and the check-in unlocks once most of the unit is mastered.
               </p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <p className="text-sm font-semibold text-slate-900">AI Dependency (0 to 100)</p>
+              <p className="text-sm font-semibold text-slate-900">A check-in graded on completion</p>
               <p className="mt-2 text-sm text-slate-700 leading-relaxed">
-                How much the student leaned on the tutor, scored from the whole chat.{' '}
-                <span className="font-semibold">0</span> is independent, <span className="font-semibold">100</span> is
-                dependent.
+                Answer every question and fix every miss for full credit. Getting it wrong never costs points, and
+                students are <span className="font-semibold">encouraged</span> to use our tutor when they get stuck.
+              </p>
+            </div>
+          </div>
+          <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Learning signals, week by week for each student
+          </p>
+          <div className="mt-3 grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <p className="text-sm font-semibold text-slate-900">First-try accuracy</p>
+              <p className="mt-2 text-sm text-slate-700 leading-relaxed">
+                How many check-in questions a student got right on the first try: what they knew walking in. Shown as
+                feedback, never taken off the grade.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <p className="text-sm font-semibold text-slate-900">Fixed with help</p>
+              <p className="mt-2 text-sm text-slate-700 leading-relaxed">
+                Of the questions a student missed, how many they worked out with the tutor. Using the tutor is a good
+                thing here: it means they pushed through.
               </p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
               <p className="text-sm font-semibold text-slate-900">Understanding</p>
               <p className="mt-2 text-sm text-slate-700 leading-relaxed">
-                Rewards students who score well <span className="font-semibold">and</span> did the thinking
-                themselves, so a high score and real mastery are easy to tell apart.
+                First-try accuracy plus half credit for misses fixed{' '}
+                <span className="font-semibold">without</span> the tutor giving the answer, so you can tell who got it
+                from who got walked through it.
               </p>
             </div>
           </div>

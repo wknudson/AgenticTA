@@ -78,10 +78,46 @@ async function backfillDueDates(): Promise<void> {
   if (rows.length > 0) console.log(`Startup: backfilled due_date for ${rows.length} assignment(s)`);
 }
 
+/**
+ * Columns added after schema.sql was first written (flipped classroom check-ins).
+ * Fresh databases get them from schema.sql; this adds them to existing ones, so nobody
+ * has to run db:reset (which would also wipe the Library). Keep in sync with
+ * ADDED_COLUMNS in agents/app/shared/db.py, which adds the same columns when the agents
+ * service starts first.
+ */
+const ADDED_COLUMNS: Record<string, Record<string, string>> = {
+  assignments: {
+    mode: "TEXT NOT NULL DEFAULT 'graded'",
+    unit: 'TEXT',
+    tutor_mode: "TEXT NOT NULL DEFAULT 'hints_only'",
+    tutor_reveal_after: 'INTEGER NOT NULL DEFAULT 2',
+    mastery_threshold: 'REAL NOT NULL DEFAULT 0.8',
+    lesson_date: 'TEXT',
+  },
+  assignment_questions: { explain_rubric: 'TEXT' },
+  student_chat_messages: { question_id: 'INTEGER' },
+  student_grades: { practice_mastery: 'REAL', first_try_accuracy: 'REAL', fixed_with_help: 'REAL' },
+  student_metrics: { practice_score: 'REAL', first_try_accuracy: 'REAL', fixed_with_help: 'REAL' },
+};
+
+function ensureColumns(): void {
+  for (const [table, cols] of Object.entries(ADDED_COLUMNS)) {
+    if (!tableExists(table)) continue;
+    const have = new Set((db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name));
+    for (const [name, ddl] of Object.entries(cols)) {
+      if (!have.has(name)) {
+        db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${ddl}`);
+        console.log(`Startup: added ${table}.${name}`);
+      }
+    }
+  }
+}
+
 export async function runMigrations(): Promise<void> {
   if (!tableExists('students')) {
     throw new Error('Database is empty. Run `npm run db:init` first.');
   }
+  ensureColumns();
   await ensureDefaultAdmin();
   await ensureStudentPasswords();
   await backfillDueDates();

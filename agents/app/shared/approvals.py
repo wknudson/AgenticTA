@@ -77,6 +77,15 @@ def _to_hitl_decision(row: dict[str, Any]) -> dict[str, Any]:
     return row["decision"]
 
 
+class ResumeFailed(RuntimeError):
+    """Resuming the agent after a decision failed. still_waiting: the graph is still paused at
+    the approval (the decided action never ran), so the decision can safely be undone."""
+
+    def __init__(self, message: str, *, still_waiting: bool):
+        super().__init__(message)
+        self.still_waiting = still_waiting
+
+
 def decide(approval_id: int, decision_type: str, *, edited_args: dict[str, Any] | None = None,
            message: str | None = None, decided_by: str = "teacher", role: str = "teacher") -> dict[str, Any]:
     """Record one decision.  When the whole group is decided, resume the agent."""
@@ -122,5 +131,16 @@ def decide(approval_id: int, decision_type: str, *, edited_args: dict[str, Any] 
     resumer = _resumers.get(row["agent"])
     if resumer is None:
         return {"status": "recorded", "group_id": row["group_id"], "note": f"no resumer registered for {row['agent']}"}
-    result = resumer(row["group_id"], [_to_hitl_decision(r) for r in rows])
+    try:
+        result = resumer(row["group_id"], [_to_hitl_decision(r) for r in rows])
+    except Exception as exc:
+        # Undo the decision only if its action never ran (e.g. the agent's model key is missing
+        # and the graph is still paused), so the teacher can try again. If the action already ran
+        # and only a later step failed, the decision stands: reverting would let a "reject"
+        # be recorded for something that was already published.
+        if getattr(exc, "still_waiting", True):
+            with connect() as conn:
+                conn.execute("UPDATE approvals SET status = 'pending', decision = NULL, decided_by = NULL, "
+                             "decided_at = NULL WHERE group_id = ?", (row["group_id"],))
+        raise
     return {"status": "resumed", "group_id": row["group_id"], "result": result}

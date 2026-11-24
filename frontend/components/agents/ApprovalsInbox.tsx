@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Approval, decideApproval, listApprovals } from '../../services/agentsApi';
 import PublishPreview from './calendar/PublishPreview';
+import PackagePreview, { type PackagePreviewHandle } from '../checkin/PackagePreview';
 
 /**
  * The teacher's Approvals inbox (Module 10: HITL approval dashboard).
@@ -14,6 +15,9 @@ const ApprovalsInbox: React.FC<{ classId: number }> = ({ classId }) => {
   const [busy, setBusy] = useState<number | null>(null);
   const [editing, setEditing] = useState<Record<number, string>>({});
   const [lastResult, setLastResult] = useState<string | null>(null);
+  // Unit packages can be edited here before approving (PackagePreview); unsaved edits are saved first.
+  const packagePreviews = useRef<Record<number, PackagePreviewHandle | null>>({});
+  const [unsaved, setUnsaved] = useState<Record<number, boolean>>({});
 
   const load = useCallback(() => {
     listApprovals(classId, statusFilter)
@@ -27,6 +31,11 @@ const ApprovalsInbox: React.FC<{ classId: number }> = ({ classId }) => {
     setBusy(a.approval_id);
     setError(null);
     try {
+      const preview = packagePreviews.current[a.approval_id];
+      if (type === 'approve' && preview?.isDirty() && !(await preview.save())) {
+        setError('The package edits weren\'t saved, so nothing was approved. Fix what the editor points out, or cancel the edits.');
+        return;
+      }
       let edited_args: Record<string, unknown> | undefined;
       if (type === 'edit') edited_args = JSON.parse(editing[a.approval_id] ?? JSON.stringify(a.action_args));
       const message = type === 'reject' ? window.prompt('Why? (sent back to the agent)') ?? undefined : undefined;
@@ -77,7 +86,7 @@ const ApprovalsInbox: React.FC<{ classId: number }> = ({ classId }) => {
                 {a.allowed_decisions.includes('approve') && (
                   <button type="button" disabled={busy === a.approval_id} onClick={() => decide(a, 'approve')}
                     className="px-3 py-1.5 text-sm rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50">
-                    Approve
+                    {unsaved[a.approval_id] ? 'Save and approve' : 'Approve'}
                   </button>
                 )}
                 {a.allowed_decisions.includes('edit') && (
@@ -112,6 +121,19 @@ const ApprovalsInbox: React.FC<{ classId: number }> = ({ classId }) => {
           ) : a.action_name === 'publish_calendar' && Array.isArray(a.action_args.event_ids) ? (
             <>
               <PublishPreview classId={classId} eventIds={a.action_args.event_ids as number[]} />
+              <details className="mt-2 text-xs text-gray-500">
+                <summary className="cursor-pointer">Raw request</summary>
+                <pre className="mt-1 bg-gray-50 border border-gray-200 rounded-lg p-3 overflow-x-auto">{JSON.stringify(a.action_args, null, 2)}</pre>
+              </details>
+            </>
+          ) : a.action_name === 'publish_unit_package' && Number(a.action_args.package_id) > 0 ? (
+            <>
+              <PackagePreview
+                packageId={Number(a.action_args.package_id)}
+                editable={a.status === 'pending'}
+                ref={(h: PackagePreviewHandle | null) => { packagePreviews.current[a.approval_id] = h; }}
+                onDirtyChange={(d: boolean) => setUnsaved((s) => (s[a.approval_id] === d ? s : { ...s, [a.approval_id]: d }))}
+              />
               <details className="mt-2 text-xs text-gray-500">
                 <summary className="cursor-pointer">Raw request</summary>
                 <pre className="mt-1 bg-gray-50 border border-gray-200 rounded-lg p-3 overflow-x-auto">{JSON.stringify(a.action_args, null, 2)}</pre>

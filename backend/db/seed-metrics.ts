@@ -1,6 +1,12 @@
 /**
  * Optional demo data: 6 extra students + 8 weeks of grades/metrics so the
  * metrics dashboards have something to show.  Run with `npm run db:seed-metrics`.
+ *
+ * Learning signals replace the old AI Dependency score (docs/flipped-classroom-plan.md section 6):
+ *   practice = % of game items mastered, first try = % of check-in questions right the first time,
+ *   fixed with help = % of misses the student fixed with the tutor,
+ *   understanding = first try + half credit for misses fixed without the tutor explaining the answer.
+ * ai_dependency_score is always written as NULL.
  */
 import bcrypt from 'bcrypt';
 import { query } from './connection.js';
@@ -22,13 +28,21 @@ type MockStudent = {
   username: string;
   email: string;
   dateOfBirth: string;
-  profile: 'high_low' | 'mid_high' | 'improving';
+  profile: Profile;
 };
+
+/**
+ * steady:          knew most of it walking in, rarely needs the tutor
+ * leans_on_tutor:  misses a lot on the first try, but works every miss out with the tutor
+ * improving:       starts shaky and gets stronger week by week
+ */
+type Profile = 'steady' | 'leans_on_tutor' | 'improving';
 
 type AssignmentRow = {
   assignment_id: number;
   class_id: number;
   max_points: number;
+  mode: 'checkin' | 'graded';
 };
 
 type ExistingStudent = {
@@ -39,10 +53,10 @@ type ExistingStudent = {
 const SEED_TAG = 'metrics_seed_v1';
 
 const MOCK_STUDENTS: MockStudent[] = [
-  { firstName: 'Nora', lastName: 'Keller', username: 'nora_keller_mx', email: 'nora.keller.metrics@school.edu', dateOfBirth: '2006-02-11', profile: 'high_low' },
-  { firstName: 'Ethan', lastName: 'Brooks', username: 'ethan_brooks_mx', email: 'ethan.brooks.metrics@school.edu', dateOfBirth: '2006-06-03', profile: 'high_low' },
-  { firstName: 'Maya', lastName: 'Rios', username: 'maya_rios_mx', email: 'maya.rios.metrics@school.edu', dateOfBirth: '2006-04-19', profile: 'mid_high' },
-  { firstName: 'Jordan', lastName: 'Price', username: 'jordan_price_mx', email: 'jordan.price.metrics@school.edu', dateOfBirth: '2005-12-08', profile: 'mid_high' },
+  { firstName: 'Nora', lastName: 'Keller', username: 'nora_keller_mx', email: 'nora.keller.metrics@school.edu', dateOfBirth: '2006-02-11', profile: 'steady' },
+  { firstName: 'Ethan', lastName: 'Brooks', username: 'ethan_brooks_mx', email: 'ethan.brooks.metrics@school.edu', dateOfBirth: '2006-06-03', profile: 'steady' },
+  { firstName: 'Maya', lastName: 'Rios', username: 'maya_rios_mx', email: 'maya.rios.metrics@school.edu', dateOfBirth: '2006-04-19', profile: 'leans_on_tutor' },
+  { firstName: 'Jordan', lastName: 'Price', username: 'jordan_price_mx', email: 'jordan.price.metrics@school.edu', dateOfBirth: '2005-12-08', profile: 'leans_on_tutor' },
   { firstName: 'Leah', lastName: 'Patel', username: 'leah_patel_mx', email: 'leah.patel.metrics@school.edu', dateOfBirth: '2006-09-22', profile: 'improving' },
   { firstName: 'Mateo', lastName: 'Diaz', username: 'mateo_diaz_mx', email: 'mateo.diaz.metrics@school.edu', dateOfBirth: '2006-01-27', profile: 'improving' },
 ];
@@ -85,25 +99,59 @@ function fmtDate(d: Date): string {
   return d.toISOString();
 }
 
-function scoreForProfile(profile: MockStudent['profile'], weekIdx: number, slot: number): { percentage: number; aiDependency: number } {
-  // weekIdx: 0 oldest ... 7 newest
-  if (profile === 'high_low') {
-    const percentage = clamp(88 + weekIdx * 1.2 + (slot % 2 === 0 ? 2 : -1), 82, 99);
-    const aiDependency = clamp(10 + (slot % 2 === 0 ? 2 : -1) + (weekIdx % 2), 3, 24);
-    return { percentage, aiDependency };
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
+type DemoSignals = {
+  practice: number;           // % of game items mastered
+  firstTry: number;           // % of check-in questions right the first time
+  fixedWithHelp: number | null; // % of misses fixed with the tutor (null = nothing to fix)
+  understanding: number;      // first try + half credit for misses fixed without the answer explained
+  completion: number;         // % of check-in questions resolved (the check-in grade)
+  legacyScore: number;        // score on a legacy graded assignment in the same week
+};
+
+/** Believable, deterministic learning signals for one student-week. weekIdx: 0 oldest ... 7 newest. */
+function signalsForProfile(profile: Profile, weekIdx: number, slot: number): DemoSignals {
+  const wobble = slot % 2 === 0 ? 2 : -2;
+  const alt = weekIdx % 2 === 0 ? 1 : -1;
+  let practice: number;
+  let firstTry: number;
+  let fixedWithHelp: number;
+  let explainedShare: number; // share of fixes where the tutor had to explain the answer
+  // Most students finish (every miss fixed = 100% fixed with help); the occasional unfinished
+  // check-in is what a missed due date looks like.
+  if (profile === 'steady') {
+    practice = clamp(90 + weekIdx * 0.8 + wobble, 84, 100);
+    firstTry = clamp(84 + weekIdx * 1.1 + wobble + alt, 78, 97);
+    fixedWithHelp = (weekIdx + slot) % 5 === 4 ? 75 : 100;
+    explainedShare = 0.1;
+  } else if (profile === 'leans_on_tutor') {
+    practice = clamp(74 + weekIdx * 1.3 + wobble, 62, 90);
+    firstTry = clamp(55 + weekIdx * 1.6 + wobble + alt * 2, 46, 72);
+    fixedWithHelp = (weekIdx + slot) % 4 === 1 ? 88 : 100;
+    explainedShare = 0.5;
+  } else {
+    practice = clamp(46 + weekIdx * 6.6 + wobble, 40, 98);
+    firstTry = clamp(42 + weekIdx * 5.8 + wobble, 36, 90);
+    fixedWithHelp = clamp(56 + weekIdx * 9 + wobble, 45, 100);
+    explainedShare = clamp(0.6 - weekIdx * 0.065, 0.15, 0.6);
   }
-  if (profile === 'mid_high') {
-    const percentage = clamp(64 + weekIdx * 1.8 + (slot % 2 === 0 ? 1 : -2), 56, 84);
-    const aiDependency = clamp(74 + (slot % 2 === 0 ? 6 : -4) + (weekIdx % 2), 55, 95);
-    return { percentage, aiDependency };
-  }
-  const percentage = clamp(52 + weekIdx * 5.5 + (slot % 2 === 0 ? 3 : -2), 48, 92);
-  const aiDependency = clamp(84 - weekIdx * 6.8 + (slot % 2 === 0 ? 2 : -3), 20, 92);
-  return { percentage, aiDependency };
+  const misses = 100 - firstTry;
+  const fixedShare = fixedWithHelp / 100;
+  const understanding = firstTry + 0.5 * misses * fixedShare * (1 - explainedShare);
+  const completion = firstTry + misses * fixedShare;
+  return {
+    practice: round1(practice),
+    firstTry: round1(firstTry),
+    fixedWithHelp: misses > 0 ? round1(fixedWithHelp) : null,
+    understanding: round1(understanding),
+    completion: round1(clamp(completion, 0, 100)),
+    legacyScore: round1(clamp(firstTry + 8 + alt, 0, 98)),
+  };
 }
 
-function pickProfile(index: number): MockStudent['profile'] {
-  const pattern: MockStudent['profile'][] = ['high_low', 'mid_high', 'improving'];
+function pickProfile(index: number): Profile {
+  const pattern: Profile[] = ['steady', 'leans_on_tutor', 'improving'];
   return pattern[index % pattern.length];
 }
 
@@ -127,14 +175,15 @@ async function main() {
     const classIds = classRes.rows.map((r) => Number(r.class_id));
 
     const assignmentRes = await client.query<AssignmentRow>(
-      `SELECT assignment_id, class_id, max_points
+      `SELECT assignment_id, class_id, max_points, mode
        FROM assignments
        ORDER BY class_id ASC, assignment_id ASC`
     );
-    const assignments = assignmentRes.rows.map((r) => ({
+    const assignments: AssignmentRow[] = assignmentRes.rows.map((r) => ({
       assignment_id: Number(r.assignment_id),
       class_id: Number(r.class_id),
       max_points: Number(r.max_points),
+      mode: r.mode === 'checkin' ? 'checkin' : 'graded',
     }));
 
     if (assignments.length === 0) {
@@ -258,14 +307,17 @@ async function main() {
         const weekIdx = assignmentIdx % 8;
         const slot = Math.floor(assignmentIdx / 8);
         const weekStart = weekStarts[weekIdx];
-        const { percentage, aiDependency } = scoreForProfile(profile, weekIdx, slot);
-        const understanding = Number((percentage * (1 - aiDependency / 100)).toFixed(2));
+        const sig = signalsForProfile(profile, weekIdx, slot);
+        const isCheckin = assignment.mode === 'checkin';
+        // Check-ins are graded on completion; legacy graded work keeps a score and has no signals.
+        const percentage = isCheckin ? sig.completion : sig.legacyScore;
+        const letterGrade = isCheckin ? (percentage >= 100 ? 'Complete' : 'Incomplete') : toLetterGrade(percentage);
         const pointsEarned = Number(((assignment.max_points * percentage) / 100).toFixed(2));
         const dayOffset = (assignmentIdx % 5) + 1; // spread across weekdays
         const submissionDate = addDays(weekStart, dayOffset);
         submissionDate.setHours(15, 30, 0, 0);
-        const gradedDate = addDays(submissionDate, 1);
-        gradedDate.setHours(9, 0, 0, 0);
+        const gradedDate = isCheckin ? new Date(submissionDate) : addDays(submissionDate, 1);
+        if (!isCheckin) gradedDate.setHours(9, 0, 0, 0);
 
         await client.query(
             `INSERT INTO student_grades (
@@ -279,8 +331,11 @@ async function main() {
                understanding_score,
                ai_dependency_score,
                engagement_score,
-               submission_attempts
-             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+               submission_attempts,
+               practice_mastery,
+               first_try_accuracy,
+               fixed_with_help
+             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NULL,$9,$10,$11,$12,$13)
              ON CONFLICT (student_id, assignment_id)
              DO UPDATE SET
                points_earned = excluded.points_earned,
@@ -289,25 +344,31 @@ async function main() {
                submission_date = excluded.submission_date,
                graded_date = excluded.graded_date,
                understanding_score = excluded.understanding_score,
-               ai_dependency_score = excluded.ai_dependency_score,
+               ai_dependency_score = NULL,
                engagement_score = excluded.engagement_score,
-               submission_attempts = excluded.submission_attempts`,
+               submission_attempts = excluded.submission_attempts,
+               practice_mastery = excluded.practice_mastery,
+               first_try_accuracy = excluded.first_try_accuracy,
+               fixed_with_help = excluded.fixed_with_help`,
             [
               studentId,
               assignment.assignment_id,
               pointsEarned,
               percentage,
-              toLetterGrade(percentage),
+              letterGrade,
               fmtDate(submissionDate),
               fmtDate(gradedDate),
-              understanding,
-              aiDependency,
-              percentage, // engagement proxy
+              sig.understanding,
+              isCheckin ? sig.practice : percentage, // engagement: practice mastery on check-ins
               1,
+              isCheckin ? sig.practice : null,
+              isCheckin ? sig.firstTry : null,
+              isCheckin ? sig.fixedWithHelp : null,
             ]
           );
 
-        const firstQuestionId = firstQuestionByAssignment.get(assignment.assignment_id);
+        // Check-ins keep their answers in checkin_item_status, not the legacy responses table.
+        const firstQuestionId = isCheckin ? undefined : firstQuestionByAssignment.get(assignment.assignment_id);
         if (firstQuestionId) {
           await client.query(
               `INSERT INTO student_assignment_responses (
@@ -333,8 +394,8 @@ async function main() {
             );
         }
 
-          // Seed AI usage logs to make behavior profiles visible in usage analytics.
-        const approxChatCount = Math.max(1, Math.round(aiDependency / 12));
+        // Seed tutor-chat usage logs: roughly one chat per missed question worked out with the tutor.
+        const approxChatCount = Math.max(1, Math.round((100 - sig.firstTry) / 10));
         for (let c = 0; c < approxChatCount; c++) {
           const logTime = new Date(submissionDate);
           logTime.setMinutes(logTime.getMinutes() - (c + 1) * 12);
@@ -349,7 +410,6 @@ async function main() {
                   assignment_id: assignment.assignment_id,
                   week_index: weekIdx,
                   profile,
-                  simulated_dependency: aiDependency,
                 }),
               ]
           );
@@ -357,7 +417,10 @@ async function main() {
       }
     }
 
-    // Step E: weekly rollup upsert into student_metrics for past 8 weeks.
+    // Step E: weekly rollup upsert into student_metrics for past 8 weeks. Same formula as
+    // upsertWeeklyMetrics (backend/routes/student.ts). Demo weeks always get learning signals:
+    // from real check-in grades when the week has them, otherwise from the student's profile,
+    // so the dashboards have something to show before any check-in exists.
     for (let i = 0; i < studentIds.length; i++) {
       const studentId = studentIds[i];
       const profile = pickProfile(i);
@@ -371,13 +434,21 @@ async function main() {
         for (const classId of enrolledClassIds) {
           const aggRes = await client.query<{
             accuracy_score: number | null;
-            ai_dependency_score: number | null;
             understanding_score: number | null;
+            engagement_score: number | null;
+            practice_score: number | null;
+            first_try_accuracy: number | null;
+            fixed_with_help: number | null;
+            checkins: number | null;
           }>(
             `SELECT
-               AVG(sg.percentage) AS accuracy_score,
-               AVG(sg.ai_dependency_score) AS ai_dependency_score,
-               AVG(sg.percentage * (1 - (sg.ai_dependency_score / 100.0))) AS understanding_score
+               SUM(CASE WHEN sg.practice_mastery IS NOT NULL THEN 1 ELSE 0 END) AS checkins,
+               AVG(COALESCE(sg.first_try_accuracy, sg.percentage)) AS accuracy_score,
+               AVG(COALESCE(sg.understanding_score, sg.percentage)) AS understanding_score,
+               AVG(COALESCE(sg.engagement_score, sg.percentage)) AS engagement_score,
+               AVG(sg.practice_mastery) AS practice_score,
+               AVG(sg.first_try_accuracy) AS first_try_accuracy,
+               AVG(sg.fixed_with_help) AS fixed_with_help
              FROM student_grades sg
              JOIN assignments a ON a.assignment_id = sg.assignment_id
              WHERE sg.student_id = $1
@@ -389,14 +460,17 @@ async function main() {
           const agg = aggRes.rows[0];
 
           // Guarantee all students/classes have all 8 weekly metric points, even if a class had no submissions that week.
-          const fallback = scoreForProfile(profile, weekIdx, 0);
-          const accuracy = agg.accuracy_score != null ? Number(agg.accuracy_score) : Number(fallback.percentage.toFixed(2));
-          const aiDependency =
-            agg.ai_dependency_score != null ? Number(agg.ai_dependency_score) : Number(fallback.aiDependency.toFixed(2));
-          const understanding =
-            agg.understanding_score != null
-              ? Number(agg.understanding_score)
-              : Number((accuracy * (1 - aiDependency / 100)).toFixed(2));
+          const fallback = signalsForProfile(profile, weekIdx, 0);
+          const pick = (v: number | null, fb: number | null) => (v != null ? round1(Number(v)) : fb);
+          const hadCheckins = Number(agg.checkins ?? 0) > 0;
+          // With real check-ins that week, a NULL fixed_with_help means "nothing to fix": keep it.
+          const signal = (v: number | null, fb: number | null) => (hadCheckins ? pick(v, null) : fb);
+          const practice = signal(agg.practice_score, fallback.practice);
+          const firstTry = signal(agg.first_try_accuracy, fallback.firstTry);
+          const fixedWithHelp = signal(agg.fixed_with_help, fallback.fixedWithHelp);
+          const accuracy = pick(agg.accuracy_score, fallback.firstTry);
+          const understanding = pick(agg.understanding_score, fallback.understanding);
+          const engagement = pick(agg.engagement_score, fallback.practice);
 
           await client.query(
             `INSERT INTO student_metrics (
@@ -409,17 +483,23 @@ async function main() {
                ai_dependency_score,
                understanding_score,
                engagement_score,
-               notes
-             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+               notes,
+               practice_score,
+               first_try_accuracy,
+               fixed_with_help
+             ) VALUES ($1,$2,$3,$4,$5,$6,NULL,$7,$8,$9,$10,$11,$12)
              ON CONFLICT (student_id, class_id, week_number)
              DO UPDATE SET
                week_start_date = excluded.week_start_date,
                week_end_date = excluded.week_end_date,
                accuracy_score = excluded.accuracy_score,
-               ai_dependency_score = excluded.ai_dependency_score,
+               ai_dependency_score = NULL,
                understanding_score = excluded.understanding_score,
                engagement_score = excluded.engagement_score,
-               notes = excluded.notes`,
+               notes = excluded.notes,
+               practice_score = excluded.practice_score,
+               first_try_accuracy = excluded.first_try_accuracy,
+               fixed_with_help = excluded.fixed_with_help`,
             [
               studentId,
               classId,
@@ -427,10 +507,12 @@ async function main() {
               weekStart.toISOString().slice(0, 10),
               weekEnd.toISOString().slice(0, 10),
               accuracy,
-              aiDependency,
               understanding,
-              accuracy, // keep engagement aligned to current convention
+              engagement,
               `Seeded by ${SEED_TAG}`,
+              practice,
+              firstTry,
+              fixedWithHelp,
             ]
           );
         }

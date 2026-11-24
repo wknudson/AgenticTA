@@ -65,6 +65,23 @@ def schema_files() -> list[Path]:
 # Columns added after a table first shipped.  CREATE TABLE IF NOT EXISTS won't add them to a
 # teammate's existing database, so init_db adds any that are missing.  Append, never edit.
 ADDED_COLUMNS: dict[str, dict[str, str]] = {
+    # Express-owned tables: same list as ADDED_COLUMNS in backend/db/migrate.ts (whichever
+    # service starts first adds them). Flipped classroom check-ins, docs/flipped-classroom-plan.md.
+    "assignments": {
+        "mode": "TEXT NOT NULL DEFAULT 'graded'",
+        "unit": "TEXT",
+        "tutor_mode": "TEXT NOT NULL DEFAULT 'hints_only'",
+        "tutor_reveal_after": "INTEGER NOT NULL DEFAULT 2",
+        "mastery_threshold": "REAL NOT NULL DEFAULT 0.8",
+        "lesson_date": "TEXT",
+    },
+    "assignment_questions": {"explain_rubric": "TEXT"},
+    "student_chat_messages": {"question_id": "INTEGER"},
+    "student_grades": {"practice_mastery": "REAL", "first_try_accuracy": "REAL", "fixed_with_help": "REAL"},
+    "student_metrics": {"practice_score": "REAL", "first_try_accuracy": "REAL", "fixed_with_help": "REAL"},
+    # Agent-owned tables created before these columns existed.
+    "study_activities": {"package_id": "INTEGER"},
+    "game_scores": {"unlocked_at": "TEXT"},
     "library_files": {
         "label_source": "TEXT",
         "review_reason": "TEXT",

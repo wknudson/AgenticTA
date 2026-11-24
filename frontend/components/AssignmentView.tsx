@@ -5,6 +5,8 @@ import {
 import { Assignment } from '../types';
 import { type AssignmentQuestionPreview } from '../services/api';
 import AssignmentQuestionsEditorModal from './AssignmentQuestionsEditorModal';
+import CheckinOverview from './checkin/CheckinOverview';
+import CheckinSettingsForm from './checkin/CheckinSettingsForm';
 
 interface AssignmentViewProps {
   assignment: Assignment;
@@ -22,6 +24,10 @@ interface AssignmentViewProps {
   }) => Promise<{ success: boolean; error?: string }>;
   questionsPreview?: AssignmentQuestionPreview[];
   onQuestionsUpdated?: () => Promise<void> | void;
+  /** Unit check-ins: open the before-class briefing for this check-in. */
+  onOpenBriefing?: () => void;
+  /** Unit check-ins: called after the settings form saves (refetch the assignment list). */
+  onCheckinSettingsSaved?: () => void;
 }
 
 function studentLoginUrl(classId: number, assignmentId: string | number): string {
@@ -70,8 +76,12 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({
   onSaveAssignment,
   questionsPreview = [],
   onQuestionsUpdated,
+  onOpenBriefing,
+  onCheckinSettingsSaved,
 }) => {
+  const isCheckin = assignment.mode === 'checkin';
   const [showEditModal, setShowEditModal] = React.useState(false);
+  const [showCheckinSettings, setShowCheckinSettings] = React.useState(false);
   const [showEditQuestionsModal, setShowEditQuestionsModal] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState('');
@@ -141,16 +151,24 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({
             <span className="text-xs text-gray-500">Share with students:</span>
             <CopyStudentLinkButton classId={classId} assignmentId={assignment.id} />
           </div>
-          <button
-            onClick={onViewAsStudent}
-            className="px-5 py-2.5 rounded-2xl font-bold text-sm text-white hover:opacity-90 transition-colors"
-            style={{ backgroundColor: '#ba3638' }}
-          >
-            View as Student
-          </button>
+          {/* The legacy student preview shows a graded assignment, which a check-in isn't. */}
+          {!isCheckin && (
+            <button
+              onClick={onViewAsStudent}
+              className="px-5 py-2.5 rounded-2xl font-bold text-sm text-white hover:opacity-90 transition-colors"
+              style={{ backgroundColor: '#ba3638' }}
+            >
+              View as Student
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {
+              // Check-ins have their own settings (dates, tutor, unlock threshold), not the legacy form.
+              if (isCheckin) {
+                setShowCheckinSettings(true);
+                return;
+              }
               setSaveError('');
               setShowEditModal(true);
             }}
@@ -164,7 +182,9 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({
       {/* Assignment Content */}
       <div className="bg-white border border-gray-200 rounded-3xl p-5 sm:p-8 lg:p-10 shadow-sm relative flex flex-col min-h-[45dvh] lg:min-h-0 overflow-hidden flex-1">
         <div className="flex-1 min-h-0 overflow-y-auto pr-1">
-          {questionsPreview.length > 0 ? (
+          {isCheckin ? (
+            <CheckinOverview classId={classId} assignmentId={Number(assignment.id)} onOpenBriefing={onOpenBriefing} />
+          ) : questionsPreview.length > 0 ? (
             <div className="space-y-8">
               {questionsPreview.map((q, idx) => (
                 <div key={q.questionId || idx} className="space-y-3">
@@ -194,6 +214,8 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({
           )}
         </div>
 
+        {/* Legacy placeholder (not wired to anything); a check-in's page doesn't show it. */}
+        {!isCheckin && (
         <div className="mt-6 sm:mt-8 flex items-center gap-4 pt-6 border-t border-gray-100">
           <div className="flex-1 relative">
             <input
@@ -206,6 +228,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({
             </button>
           </div>
         </div>
+        )}
       </div>
     </div>
     {showEditModal && (
@@ -253,14 +276,16 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({
             </div>
             {saveError && <p className="text-sm text-red-600">{saveError}</p>}
             <div className="flex justify-between gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setShowEditQuestionsModal(true)}
-                disabled={saving}
-                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
-                Edit questions
-              </button>
+              {isCheckin ? <span /> : (
+                <button
+                  type="button"
+                  onClick={() => setShowEditQuestionsModal(true)}
+                  disabled={saving}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  Edit questions
+                </button>
+              )}
               <div className="flex gap-2">
               <button type="button" onClick={() => setShowEditModal(false)} disabled={saving} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700">Cancel</button>
               <button type="button" onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-lg bg-gray-900 text-white">{saving ? 'Saving...' : 'Save changes'}</button>
@@ -269,6 +294,14 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({
           </div>
         </div>
       </div>
+    )}
+    {showCheckinSettings && isCheckin && (
+      <CheckinSettingsForm
+        classId={classId}
+        assignmentId={Number(assignment.id)}
+        onClose={() => setShowCheckinSettings(false)}
+        onSaved={() => onCheckinSettingsSaved?.()}
+      />
     )}
     {showEditQuestionsModal && (
       <AssignmentQuestionsEditorModal

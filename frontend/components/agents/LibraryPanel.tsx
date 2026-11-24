@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ClipboardCheck, Hourglass } from 'lucide-react';
 import AgentPanelShell from './AgentPanelShell';
+import { getCheckinOverview, type ClassCheckinOverview } from '../../services/classOverviewApi';
+import { formatDay } from '../checkin/format';
 import FileDetail from './library/FileDetail';
 import {
   DOC_TYPE_LABELS,
@@ -40,8 +43,31 @@ function highlight(text: string, q: string): React.ReactNode {
   return text.split(re).map((part, i) => (i % 2 ? <mark key={i} className="bg-yellow-100">{part}</mark> : part));
 }
 
-const LibraryPanel: React.FC<AgentPanelProps> = ({ classId }) => {
+const unitKey = (unit: string | null | undefined) => (unit ?? '').trim().toLowerCase();
+
+const LibraryPanel: React.FC<AgentPanelProps> = ({ classId, onStartCheckin }) => {
   const [tab, setTab] = useState<Tab>('files');
+  // Which units already have a check-in (published, or a draft waiting for approval).
+  const [checkinInfo, setCheckinInfo] = useState<ClassCheckinOverview | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    setCheckinInfo(null);
+    getCheckinOverview(classId, controller.signal)
+      .then(setCheckinInfo)
+      .catch(() => { /* the marks are a nice-to-have; the Library works without them */ });
+    return () => controller.abort();
+  }, [classId]);
+  const checkinsByUnit = useMemo(() => {
+    const out = new Map<string, { published: ClassCheckinOverview['checkins']; drafts: ClassCheckinOverview['drafts'] }>();
+    const entry = (unit: string | null) => {
+      const key = unitKey(unit);
+      if (!out.has(key)) out.set(key, { published: [], drafts: [] });
+      return out.get(key)!;
+    };
+    for (const c of checkinInfo?.checkins ?? []) if (c.unit) entry(c.unit).published.push(c);
+    for (const d of checkinInfo?.drafts ?? []) entry(d.unit).drafts.push(d);
+    return out;
+  }, [checkinInfo]);
   const [files, setFiles] = useState<LibraryFile[]>([]);
   const [units, setUnits] = useState<UnitSummary[]>([]);
   const [docTypes, setDocTypes] = useState<string[]>([]);
@@ -172,16 +198,69 @@ const LibraryPanel: React.FC<AgentPanelProps> = ({ classId }) => {
           <div className="flex flex-col md:flex-row gap-4">
             <nav className="md:w-56 shrink-0 space-y-1" aria-label="Units">
               {[{ key: ALL, label: 'All files', n: files.length },
-                ...units.map((u) => ({ key: u.unit ?? NO_UNIT, label: u.unit ?? 'Whole course', n: u.total }))].map((u) => (
-                <button key={u.key} type="button" onClick={() => { setUnitFilter(u.key); setTypeFilter(null); }}
-                  className={`w-full text-left px-3 py-1.5 rounded-lg text-sm flex justify-between gap-2 ${
-                    unitFilter === u.key ? 'bg-gray-100 font-medium' : 'hover:bg-gray-50'}`}>
-                  <span className="truncate">{u.label}</span>
-                  <span className="text-gray-500">{u.n}</span>
-                </button>
-              ))}
+                ...units.map((u) => ({ key: u.unit ?? NO_UNIT, label: u.unit ?? 'Whole course', n: u.total }))].map((u) => {
+                const marks = u.key === ALL || u.key === NO_UNIT ? undefined : checkinsByUnit.get(unitKey(u.key));
+                return (
+                  <button key={u.key} type="button" onClick={() => { setUnitFilter(u.key); setTypeFilter(null); }}
+                    aria-current={unitFilter === u.key ? 'true' : undefined}
+                    className={`w-full text-left px-3 py-1.5 rounded-lg text-sm flex items-center justify-between gap-2 ${
+                      unitFilter === u.key ? 'bg-gray-100 font-medium' : 'hover:bg-gray-50'}`}>
+                    <span className="truncate">{u.label}</span>
+                    <span className="flex items-center gap-1.5 shrink-0">
+                      {marks?.published.length ? (
+                        <span title="Has a check-in" className="text-emerald-600">
+                          <ClipboardCheck className="w-3.5 h-3.5" aria-hidden="true" />
+                          <span className="sr-only">(has a check-in)</span>
+                        </span>
+                      ) : marks?.drafts.length ? (
+                        <span title="Check-in waiting for approval" className="text-amber-600">
+                          <Hourglass className="w-3.5 h-3.5" aria-hidden="true" />
+                          <span className="sr-only">(check-in waiting for approval)</span>
+                        </span>
+                      ) : null}
+                      <span className="text-gray-500">{u.n}</span>
+                    </span>
+                  </button>
+                );
+              })}
             </nav>
             <div className="flex-1 min-w-0">
+              {unitFilter !== ALL && unitFilter !== NO_UNIT && (() => {
+                const marks = checkinsByUnit.get(unitKey(unitFilter));
+                const published = marks?.published ?? [];
+                const drafts = marks?.drafts ?? [];
+                return (
+                  <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0 text-sm space-y-0.5">
+                      <p className="font-medium text-gray-900 break-words">{unitFilter}</p>
+                      {published.length > 0 && (
+                        <p className="text-xs text-emerald-800 flex items-start gap-1">
+                          <ClipboardCheck className="w-3.5 h-3.5 mt-px shrink-0" aria-hidden="true" />
+                          <span>
+                            {published.length === 1 ? 'Has a check-in: ' : `Has ${published.length} check-ins: `}
+                            {published.map((c) => `${c.title}${c.lesson_date ? ` (lesson ${formatDay(c.lesson_date)})` : ''}`).join(', ')}
+                          </span>
+                        </p>
+                      )}
+                      {drafts.length > 0 && (
+                        <p className="text-xs text-amber-800 flex items-start gap-1">
+                          <Hourglass className="w-3.5 h-3.5 mt-px shrink-0" aria-hidden="true" />
+                          <span>{drafts.length === 1 ? 'A check-in draft is' : `${drafts.length} check-in drafts are`} waiting for approval.</span>
+                        </p>
+                      )}
+                      {checkinInfo && published.length === 0 && drafts.length === 0 && (
+                        <p className="text-xs text-gray-500">No check-in for this unit yet.</p>
+                      )}
+                    </div>
+                    {onStartCheckin && (
+                      <button type="button" onClick={() => onStartCheckin(unitFilter)}
+                        className="shrink-0 self-start sm:self-auto px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-900 text-white hover:bg-gray-800">
+                        Make a check-in for this unit
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
               <div className="flex flex-wrap gap-1 mb-2">
                 {typesInView.map((t) => (
                   <button key={t} type="button" onClick={() => setTypeFilter(typeFilter === t ? null : t)}

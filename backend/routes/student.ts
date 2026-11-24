@@ -127,71 +127,40 @@ function computeUnderstandingFromAttemptPercentages(percentages: number[]): numb
   return clampScore(score);
 }
 
+/**
+ * Weekly metrics row for one student. Check-ins (flipped classroom) count first-try accuracy
+ * as accuracy and carry the learning signals; legacy graded assignments count their percentage.
+ * Same formula as WEEKLY_METRICS_SQL in agents/app/shared/checkin.py: keep them in sync.
+ */
 async function upsertWeeklyMetrics(studentId: number, classId: number): Promise<void> {
-  const weekRes = await query(
-    `SELECT
-       date('now', 'weekday 0', '-6 days') AS week_start_date,
-       date('now', 'weekday 0') AS week_end_date,
-       CAST(strftime('%V', 'now') AS INTEGER) AS week_number`
-  );
-  const week = weekRes.rows[0] as {
-    week_start_date: string;
-    week_end_date: string;
-    week_number: number;
-  };
-
-  const aggRes = await query(
-    `SELECT
-       AVG(sg.percentage) AS accuracy_score,
-       AVG(COALESCE(sg.ai_dependency_score, 50)) AS ai_dependency_score,
-       AVG(COALESCE(sg.understanding_score, sg.percentage)) AS understanding_score,
-       AVG(COALESCE(sg.engagement_score, sg.percentage)) AS engagement_score
+  await query(
+    `INSERT INTO student_metrics (student_id, class_id, week_number, week_start_date, week_end_date,
+         accuracy_score, understanding_score, ai_dependency_score, engagement_score,
+         practice_score, first_try_accuracy, fixed_with_help)
+     SELECT $1, $2, CAST(strftime('%V', 'now') AS INTEGER),
+            date('now', 'weekday 0', '-6 days'), date('now', 'weekday 0'),
+            AVG(COALESCE(sg.first_try_accuracy, sg.percentage)),
+            AVG(COALESCE(sg.understanding_score, sg.percentage)),
+            AVG(sg.ai_dependency_score),
+            AVG(COALESCE(sg.engagement_score, sg.percentage)),
+            AVG(sg.practice_mastery), AVG(sg.first_try_accuracy), AVG(sg.fixed_with_help)
      FROM student_grades sg
      JOIN assignments a ON a.assignment_id = sg.assignment_id
      WHERE sg.student_id = $1
        AND a.class_id = $2
-       AND sg.submission_date >= $3
-       AND sg.submission_date < date($3, '+7 days')`,
-    [studentId, classId, week.week_start_date]
-  );
-  const agg = aggRes.rows[0] as {
-    accuracy_score: number | null;
-    ai_dependency_score: number | null;
-    understanding_score: number | null;
-    engagement_score: number | null;
-  };
-
-  await query(
-    `INSERT INTO student_metrics (
-       student_id,
-       class_id,
-       week_number,
-       week_start_date,
-       week_end_date,
-       accuracy_score,
-       understanding_score,
-       ai_dependency_score,
-       engagement_score
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-     ON CONFLICT (student_id, class_id, week_number)
-     DO UPDATE SET
-       week_start_date = EXCLUDED.week_start_date,
-       week_end_date = EXCLUDED.week_end_date,
-       accuracy_score = EXCLUDED.accuracy_score,
-       understanding_score = EXCLUDED.understanding_score,
-       ai_dependency_score = EXCLUDED.ai_dependency_score,
-       engagement_score = EXCLUDED.engagement_score`,
-    [
-      studentId,
-      classId,
-      week.week_number,
-      week.week_start_date,
-      week.week_end_date,
-      agg.accuracy_score,
-      agg.understanding_score,
-      agg.ai_dependency_score,
-      agg.engagement_score,
-    ]
+       AND sg.submission_date >= date('now', 'weekday 0', '-6 days')
+       AND sg.submission_date < date('now', 'weekday 0', '+1 days')
+     ON CONFLICT (student_id, class_id, week_number) DO UPDATE SET
+       week_start_date = excluded.week_start_date,
+       week_end_date = excluded.week_end_date,
+       accuracy_score = excluded.accuracy_score,
+       understanding_score = excluded.understanding_score,
+       ai_dependency_score = excluded.ai_dependency_score,
+       engagement_score = excluded.engagement_score,
+       practice_score = excluded.practice_score,
+       first_try_accuracy = excluded.first_try_accuracy,
+       fixed_with_help = excluded.fixed_with_help`,
+    [studentId, classId]
   );
 }
 
@@ -331,11 +300,16 @@ async function recomputeAndPersistAggregateGrade(
   };
 }
 
-async function ensureStudentCanAccess(studentId: number, classId: number, assignmentId: number) {
+async function ensureStudentCanAccess(
+  studentId: number,
+  classId: number,
+  assignmentId: number,
+  opts: { allowPastDueCheckin?: boolean } = {}
+) {
   const assignmentRes = await query(
     `SELECT assignment_id, class_id, assignment_name, description, type, max_points, due_date, allowed_submissions,
             COALESCE(keep_type, attempt_scoring_policy) AS keep_type,
-            ai_params, pdf_summary
+            ai_params, pdf_summary, mode, unit, lesson_date, tutor_mode, mastery_threshold
      FROM assignments
      WHERE assignment_id = $1 AND class_id = $2`,
     [assignmentId, classId]
@@ -348,7 +322,7 @@ async function ensureStudentCanAccess(studentId: number, classId: number, assign
   const enrollmentRes = await query(
     `SELECT 1
      FROM student_classes
-     WHERE student_id = $1 AND class_id = $2`,
+     WHERE student_id = $1 AND class_id = $2 AND LOWER(TRIM(status)) = 'active'`,
     [studentId, classId]
   );
 
@@ -356,7 +330,8 @@ async function ensureStudentCanAccess(studentId: number, classId: number, assign
     return { ok: false as const, status: 403, error: 'You are not enrolled in this class' };
   }
 
-  if (isPastDue(assignmentRes.rows[0]?.due_date as string | null | undefined)) {
+  const isCheckin = assignmentRes.rows[0]?.mode === 'checkin';
+  if (isPastDue(assignmentRes.rows[0]?.due_date as string | null | undefined) && !(opts.allowPastDueCheckin && isCheckin)) {
     return {
       ok: false as const,
       status: 403,
@@ -376,6 +351,11 @@ async function ensureStudentCanAccess(studentId: number, classId: number, assign
     keep_type: string | null;
     ai_params: string | null;
     pdf_summary: string | null;
+    mode: string | null;
+    unit: string | null;
+    lesson_date: string | null;
+    tutor_mode: string | null;
+    mastery_threshold: number | null;
   } };
 }
 
@@ -389,9 +369,32 @@ router.get('/assignments/:classId/:assignmentId', requireStudentAuth, async (req
       return res.status(400).json({ success: false, error: 'Invalid class or assignment id' });
     }
 
-    const access = await ensureStudentCanAccess(studentId, classId, assignmentId);
+    const access = await ensureStudentCanAccess(studentId, classId, assignmentId, { allowPastDueCheckin: true });
     if (!access.ok) {
       return res.status(access.status).json({ success: false, error: access.error });
+    }
+
+    // Check-ins (flipped classroom) load their games and questions from the agents service
+    // (/agents/games/practice, /agents/tutor/checkin), so only the assignment details go here.
+    if (access.assignment.mode === 'checkin') {
+      return res.json({
+        success: true,
+        assignment: {
+          assignmentId: access.assignment.assignment_id,
+          classId: access.assignment.class_id,
+          assignmentName: access.assignment.assignment_name,
+          description: access.assignment.description,
+          maxPoints: access.assignment.max_points,
+          dueDate: access.assignment.due_date,
+          mode: 'checkin',
+          unit: access.assignment.unit,
+          lessonDate: access.assignment.lesson_date,
+          tutorMode: access.assignment.tutor_mode,
+          masteryThreshold: access.assignment.mastery_threshold,
+          pastDue: isPastDue(access.assignment.due_date),
+        },
+        questions: [],
+      });
     }
 
     const questionsRes = await query(
@@ -476,7 +479,8 @@ router.get('/assignments/:classId/:assignmentId', requireStudentAuth, async (req
         sortOrder: q.sortOrder,
         questionText: q.questionText,
         questionType: q.questionType,
-        options: seededShuffle(q.options, studentId * 1000 + q.questionId).map((o) => ({
+        // A short-answer question's only option IS the model answer: never send it to the browser.
+        options: (q.questionType === 'short_answer' ? [] : seededShuffle(q.options, studentId * 1000 + q.questionId)).map((o) => ({
           optionId: o.option_id,
           optionText: o.option_text,
         })),
@@ -519,6 +523,9 @@ router.post('/assignments/:classId/:assignmentId/submit', requireStudentAuth, as
     const access = await ensureStudentCanAccess(studentId, classId, assignmentId);
     if (!access.ok) {
       return res.status(access.status).json({ success: false, error: access.error });
+    }
+    if (access.assignment.mode === 'checkin') {
+      return res.status(409).json({ success: false, error: 'Check-ins are completed question by question, not submitted.' });
     }
 
     const existingGradeRes = await query(
@@ -734,18 +741,9 @@ ${transcriptText}`;
     } catch (err) {
       console.error('AI dependency scoring failed; defaulting to neutral score:', err);
       aiDependencyScore = 50;
-    } finally {
-      // Always clear temporary transcript rows for this attempt.
-      try {
-        await query(
-          `DELETE FROM student_chat_messages
-           WHERE student_id = $1 AND assignment_id = $2 AND attempt_number = $3`,
-          [studentId, assignmentId, attemptNumber]
-        );
-      } catch (cleanupErr) {
-        console.error('Failed to clean temporary student_chat_messages rows:', cleanupErr);
-      }
     }
+    // Transcripts are kept (they used to be deleted here): the misconception finder and the
+    // teacher briefing read them. See docs/flipped-classroom-plan.md.
 
     const attemptPercentagesRes = await query(
       `SELECT percentage

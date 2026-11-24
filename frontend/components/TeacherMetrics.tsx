@@ -17,33 +17,41 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import {
+  SIGNAL_KEYS,
+  SIGNAL_META,
+  LearningSignalsExplainer,
+  fmtSignal,
+  signalValue,
+  type SignalKey,
+} from './learningSignals';
+import { STAGE_LABEL, STAGE_STYLE, formatDay } from './checkin/format';
+import { getStudentCheckins, type StudentCheckinRow } from '../services/classOverviewApi';
 
 interface TeacherMetricsProps {
   classId: number;
   /** When set, metrics are loaded via authenticated admin API */
   adminToken?: string;
+  /** Teacher dashboard: open the Insights briefing on one check-in. When set (and not admin),
+   *  a student's detail lists their check-ins with links to the briefing behind the numbers. */
+  onOpenCheckin?: (assignmentId: number) => void;
 }
 
-type MetricKey = 'accuracy' | 'aiDependency' | 'understanding';
+/** Shown while every signal is a dash (no check-in work yet). */
+const SignalsEmptyNote: React.FC = () => (
+  <p className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-3 text-sm text-gray-600">
+    Learning signals appear after students do their first unit check-in. Each number is a weekly average, so a
+    dash (—) means no check-in work yet.
+  </p>
+);
+
+const allSignalsEmpty = (rows: Array<Parameters<typeof signalValue>[0]>) =>
+  rows.every((row) => SIGNAL_KEYS.every((key) => signalValue(row, key) == null));
+
+type MetricKey = SignalKey;
 type MetricsLevel = 'student_list' | 'student_detail';
 type SortField = 'name' | MetricKey;
 type SortDirection = 'asc' | 'desc';
-
-const METRIC_META: Record<MetricKey, { label: string; color: string }> = {
-  accuracy: { label: 'Accuracy', color: '#2563eb' },
-  aiDependency: { label: 'AI Dependency', color: '#dc2626' },
-  understanding: { label: 'Understanding', color: '#16a34a' },
-};
-
-function metricBadgeClass(metric: MetricKey): string {
-  if (metric === 'accuracy') return 'bg-blue-50 text-blue-700';
-  if (metric === 'aiDependency') return 'bg-red-50 text-red-700';
-  return 'bg-green-50 text-green-700';
-}
-
-function fmtScore(v: number | null): string {
-  return v == null ? '--' : `${Math.round(v)}%`;
-}
 
 function fmtWeekRange(start: string, end: string): string {
   if (!start?.trim() && !end?.trim()) return '';
@@ -57,12 +65,52 @@ function fmtWeekRange(start: string, end: string): string {
   }
 }
 
-const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken }) => {
+const MetricPills: React.FC<{ selected: MetricKey; onSelect: (m: MetricKey) => void }> = ({ selected, onSelect }) => (
+  <div className="flex flex-wrap gap-2 mb-3">
+    {SIGNAL_KEYS.map((metric) => (
+      <button
+        key={metric}
+        type="button"
+        onClick={() => onSelect(metric)}
+        title={SIGNAL_META[metric].help}
+        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+          selected === metric ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+        }`}
+      >
+        {SIGNAL_META[metric].label}
+      </button>
+    ))}
+  </div>
+);
+
+const SignalLineChart: React.FC<{ data: Array<{ weekLabel: string; value: number | null }>; metric: MetricKey }> = ({
+  data,
+  metric,
+}) => (
+  <ResponsiveContainer width="100%" height="100%">
+    <LineChart data={data}>
+      <CartesianGrid stroke="#e5e7eb" />
+      <XAxis dataKey="weekLabel" tick={{ fontSize: 11 }} />
+      <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
+      <Tooltip formatter={(value: number | null) => [fmtSignal(value), SIGNAL_META[metric].label]} />
+      <Line
+        type="monotone"
+        dataKey="value"
+        stroke={SIGNAL_META[metric].color}
+        strokeWidth={3}
+        dot={{ r: 4, fill: SIGNAL_META[metric].color }}
+        connectNulls
+      />
+    </LineChart>
+  </ResponsiveContainer>
+);
+
+const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken, onOpenCheckin }) => {
   const STUDENTS_PER_PAGE = 8;
   const [level, setLevel] = useState<MetricsLevel>('student_list');
   const [students, setStudents] = useState<ClassMetricStudentSummary[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<ClassMetricStudentSummary | null>(null);
-  const [selectedMetric, setSelectedMetric] = useState<MetricKey>('accuracy');
+  const [selectedMetric, setSelectedMetric] = useState<MetricKey>('understanding');
   const [showLearnMore, setShowLearnMore] = useState(false);
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -78,12 +126,30 @@ const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken }) 
   const [classAvgWeekly, setClassAvgWeekly] = useState<ClassMetricWeekAverage[]>([]);
   const [classAvgCurrent, setClassAvgCurrent] = useState<ClassMetricAveragesPayload['currentAverages']>(null);
   const [classAvgWeekMeta, setClassAvgWeekMeta] = useState<ClassMetricAveragesPayload['currentWeek']>(null);
-  const [classAvgSelectedMetric, setClassAvgSelectedMetric] = useState<MetricKey>('accuracy');
+  const [classAvgSelectedMetric, setClassAvgSelectedMetric] = useState<MetricKey>('understanding');
 
   const metricFetchOpts = useMemo(
     () => (adminToken ? { adminToken } : undefined),
     [adminToken]
   );
+
+  // A student's check-ins (teacher dashboard only), with links to each briefing.
+  const canOpenCheckins = !!onOpenCheckin && !adminToken;
+  const [studentCheckins, setStudentCheckins] = useState<StudentCheckinRow[] | null>(null);
+  const [checkinsError, setCheckinsError] = useState<string | null>(null);
+  const detailStudentId = level === 'student_detail' ? selectedStudent?.studentId ?? null : null;
+  useEffect(() => {
+    setStudentCheckins(null);
+    setCheckinsError(null);
+    if (!canOpenCheckins || detailStudentId == null) return;
+    const controller = new AbortController();
+    getStudentCheckins(classId, detailStudentId, controller.signal)
+      .then((r) => setStudentCheckins(r.checkins))
+      .catch((err) => {
+        if (!controller.signal.aborted) setCheckinsError(err instanceof Error ? err.message : String(err));
+      });
+    return () => controller.abort();
+  }, [classId, detailStudentId, canOpenCheckins]);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,15 +177,10 @@ const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken }) 
 
   const sortedStudents = useMemo(() => {
     const getNumericMetric = (s: ClassMetricStudentSummary, metric: MetricKey): number => {
-      const val =
-        metric === 'accuracy'
-          ? s.currentWeek.accuracy
-          : metric === 'aiDependency'
-            ? s.currentWeek.aiDependency
-            : s.currentWeek.understanding;
+      const val = signalValue(s.currentWeek, metric);
       // Put missing values at the end in asc and start in desc by mapping to +/-infinity.
       if (val == null) return sortDirection === 'asc' ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
-      return Number(val);
+      return val;
     };
 
     const search = studentSearch.trim().toLowerCase();
@@ -139,7 +200,8 @@ const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken }) 
       }
       const aVal = getNumericMetric(a, sortField);
       const bVal = getNumericMetric(b, sortField);
-      return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+      if (aVal === bVal) return 0;
+      return sortDirection === 'asc' ? (aVal < bVal ? -1 : 1) : aVal > bVal ? -1 : 1;
     });
   }, [students, sortField, sortDirection, studentSearch]);
 
@@ -180,12 +242,7 @@ const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken }) 
     const recentHistory = history.slice(-8);
     return recentHistory.map((h, index) => ({
       weekLabel: `Week ${index + 1}`,
-      value:
-        selectedMetric === 'accuracy'
-          ? h.accuracy
-          : selectedMetric === 'aiDependency'
-            ? h.aiDependency
-            : h.understanding,
+      value: signalValue(h, selectedMetric),
     }));
   }, [history, selectedMetric]);
 
@@ -196,22 +253,15 @@ const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken }) 
       if (nums.length === 0) return null;
       return nums.reduce((sum, n) => sum + n, 0) / nums.length;
     };
-    return {
-      understanding: avg(recent.map((h) => h.understanding)),
-      aiDependency: avg(recent.map((h) => h.aiDependency)),
-      accuracy: avg(recent.map((h) => h.accuracy)),
-    };
+    const out = {} as Record<MetricKey, number | null>;
+    for (const key of SIGNAL_KEYS) out[key] = avg(recent.map((h) => signalValue(h, key)));
+    return out;
   }, [history]);
 
   const classAvgChartData = useMemo(() => {
     return classAvgWeekly.map((h, index) => ({
       weekLabel: `Week ${index + 1}`,
-      value:
-        classAvgSelectedMetric === 'accuracy'
-          ? h.accuracy
-          : classAvgSelectedMetric === 'aiDependency'
-            ? h.aiDependency
-            : h.understanding,
+      value: signalValue(h, classAvgSelectedMetric),
     }));
   }, [classAvgWeekly, classAvgSelectedMetric]);
 
@@ -240,11 +290,17 @@ const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken }) 
       onClick={() => setShowLearnMore(false)}
     >
       <div
-        className="w-full max-w-2xl bg-white rounded-2xl shadow-xl border border-gray-100 p-6 space-y-4"
+        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-xl border border-gray-100 p-6 space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
-          <h3 className="text-xl font-bold text-black">How metrics work</h3>
+          <div>
+            <h3 className="text-xl font-bold text-black">How metrics work</h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Students practice with games, then do a check-in where using the tutor is encouraged. These numbers
+              show what they knew, where they needed help, and whether they got there. Each is a weekly average.
+            </p>
+          </div>
           <button
             type="button"
             onClick={() => setShowLearnMore(false)}
@@ -254,35 +310,7 @@ const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken }) 
             x
           </button>
         </div>
-        <div className="space-y-3 text-sm text-gray-700">
-          <div className="rounded-xl border border-gray-200 p-3">
-            <p className="font-semibold text-gray-900">Accuracy</p>
-            <p>
-              Accuracy reflects how consistently a student gets answers correct on graded work. It is a performance
-              signal focused on correctness and outcome quality across assignments.
-            </p>
-          </div>
-          <div className="rounded-xl border border-gray-200 p-3">
-            <p className="font-semibold text-gray-900">AI Dependency</p>
-            <p>
-              AI Dependency estimates how much a student leans on AI during the learning process. It is intended to
-              capture reliance patterns, not just final correctness, so teachers can spot over-reliance or healthy use.
-            </p>
-          </div>
-          <div className="rounded-xl border border-gray-200 p-3">
-            <p className="font-semibold text-gray-900">Understanding</p>
-            <p>
-              Understanding measures learning growth across attempts. It increases when a student meaningfully improves
-              from earlier attempts to later attempts, especially when that improvement is sustained.
-            </p>
-            <p>
-              Concept:
-              <span className="block mt-1 font-mono text-xs bg-gray-100 rounded px-2 py-1">
-                Bigger jump from attempt 1 to later attempts = higher understanding
-              </span>
-            </p>
-          </div>
-        </div>
+        <LearningSignalsExplainer />
       </div>
     </div>
   ) : null;
@@ -293,14 +321,14 @@ const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken }) 
       onClick={() => setShowClassAveragesModal(false)}
     >
       <div
-        className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-xl border border-gray-100 p-6 space-y-4"
+        className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-xl font-bold text-black">Class averages</h3>
             <p className="text-sm text-gray-600 mt-1">
-              Mean of each metric across enrolled students, by week (up to 8 most recent weeks).
+              Average of each signal across enrolled students, by week (up to 8 most recent weeks).
             </p>
           </div>
           <button
@@ -321,7 +349,7 @@ const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken }) 
           <p className="text-red-600 text-sm">{classAvgError}</p>
         ) : classAvgWeekly.length === 0 ? (
           <p className="text-gray-600 text-sm">
-            No class weekly metrics yet. Averages appear after students submit graded work and weekly rollups are recorded.
+            No weekly numbers yet. They show up once students start working through check-ins.
           </p>
         ) : (
           <>
@@ -334,54 +362,29 @@ const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken }) 
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${metricBadgeClass('accuracy')}`}>
-                    Accuracy {fmtScore(classAvgCurrent.accuracy)}
-                  </span>
-                  <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${metricBadgeClass('aiDependency')}`}>
-                    AI Dependency {fmtScore(classAvgCurrent.aiDependency)}
-                  </span>
-                  <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${metricBadgeClass('understanding')}`}>
-                    Understanding {fmtScore(classAvgCurrent.understanding)}
-                  </span>
+                  {SIGNAL_KEYS.map((key) => (
+                    <span
+                      key={key}
+                      title={SIGNAL_META[key].help}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium ${SIGNAL_META[key].badge}`}
+                    >
+                      {SIGNAL_META[key].label} {fmtSignal(signalValue(classAvgCurrent, key))}
+                    </span>
+                  ))}
                 </div>
               </div>
             )}
 
             <div className="bg-white rounded-2xl border border-gray-200 p-4">
-              <div className="flex flex-wrap gap-2 mb-3">
-                {(['understanding', 'accuracy', 'aiDependency'] as MetricKey[]).map((metric) => (
-                  <button
-                    key={metric}
-                    type="button"
-                    onClick={() => setClassAvgSelectedMetric(metric)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                      classAvgSelectedMetric === metric ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {METRIC_META[metric].label}
-                  </button>
-                ))}
-              </div>
-              <h4 className="text-lg font-semibold text-center text-black mb-2">
-                Class average: {METRIC_META[classAvgSelectedMetric].label} over time
+              <MetricPills selected={classAvgSelectedMetric} onSelect={setClassAvgSelectedMetric} />
+              <h4 className="text-lg font-semibold text-center text-black mb-1">
+                Class average: {SIGNAL_META[classAvgSelectedMetric].label} over time
               </h4>
-              <div className="h-[280px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={classAvgChartData}>
-                    <CartesianGrid stroke="#e5e7eb" />
-                    <XAxis dataKey="weekLabel" tick={{ fontSize: 11 }} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(value: number | null) => `${Math.round(Number(value ?? 0))}%`} />
-                    <Line
-                      type="monotone"
-                      dataKey="value"
-                      stroke={METRIC_META[classAvgSelectedMetric].color}
-                      strokeWidth={3}
-                      dot={{ r: 4, fill: METRIC_META[classAvgSelectedMetric].color }}
-                      connectNulls
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+              <p className="text-xs text-gray-500 text-center mb-2 max-w-xl mx-auto">
+                {SIGNAL_META[classAvgSelectedMetric].help}
+              </p>
+              <div className="h-[260px] sm:h-[280px] w-full">
+                <SignalLineChart data={classAvgChartData} metric={classAvgSelectedMetric} />
               </div>
             </div>
 
@@ -391,9 +394,11 @@ const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken }) 
                   <tr className="border-b border-gray-200 bg-gray-50">
                     <th className="p-2 font-semibold text-gray-700">Week</th>
                     <th className="p-2 font-semibold text-gray-700">Dates</th>
-                    <th className="p-2 font-semibold text-blue-800">Accuracy</th>
-                    <th className="p-2 font-semibold text-red-800">AI dependency</th>
-                    <th className="p-2 font-semibold text-green-800">Understanding</th>
+                    {SIGNAL_KEYS.map((key) => (
+                      <th key={key} className="p-2 font-semibold whitespace-nowrap" style={{ color: SIGNAL_META[key].color }}>
+                        {SIGNAL_META[key].short}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
@@ -403,9 +408,9 @@ const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken }) 
                       <td className="p-2 text-gray-600 whitespace-nowrap">
                         {fmtWeekRange(w.weekStartDate, w.weekEndDate) || '—'}
                       </td>
-                      <td className="p-2">{fmtScore(w.accuracy)}</td>
-                      <td className="p-2">{fmtScore(w.aiDependency)}</td>
-                      <td className="p-2">{fmtScore(w.understanding)}</td>
+                      {SIGNAL_KEYS.map((key) => (
+                        <td key={key} className="p-2">{fmtSignal(signalValue(w, key))}</td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
@@ -450,9 +455,11 @@ const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken }) 
                 title="Sort by"
               >
                 <option value="name">Sort: Name</option>
-                <option value="accuracy">Sort: Accuracy</option>
-                <option value="aiDependency">Sort: AI Dependency</option>
-                <option value="understanding">Sort: Understanding</option>
+                {SIGNAL_KEYS.map((key) => (
+                  <option key={key} value={key}>
+                    Sort: {SIGNAL_META[key].label}
+                  </option>
+                ))}
               </select>
               <select
                 value={sortDirection}
@@ -467,8 +474,8 @@ const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken }) 
                   </>
                 ) : (
                   <>
-                    <option value="asc">Ascending</option>
-                    <option value="desc">Descending</option>
+                    <option value="asc">Lowest first</option>
+                    <option value="desc">Highest first</option>
                   </>
                 )}
               </select>
@@ -488,6 +495,7 @@ const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken }) 
               </button>
             </div>
           </div>
+          {students.length > 0 && allSignalsEmpty(students.map((s) => s.currentWeek)) && <SignalsEmptyNote />}
           {students.length === 0 ? (
             <p className="text-gray-400 italic">No students enrolled in this class yet.</p>
           ) : (
@@ -499,21 +507,21 @@ const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken }) 
                   onClick={() => openStudentDetail(s)}
                   className="w-full text-left bg-white border border-gray-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all"
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="min-w-0">
                       <p className="font-semibold text-black">{s.firstName} {s.lastName}</p>
                       <p className="text-xs text-gray-500">@{s.username}</p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${metricBadgeClass('accuracy')}`}>
-                        Accuracy {fmtScore(s.currentWeek.accuracy)}
-                      </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${metricBadgeClass('aiDependency')}`}>
-                        AI Dependency {fmtScore(s.currentWeek.aiDependency)}
-                      </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${metricBadgeClass('understanding')}`}>
-                        Understanding {fmtScore(s.currentWeek.understanding)}
-                      </span>
+                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                      {SIGNAL_KEYS.map((key) => (
+                        <span
+                          key={key}
+                          title={SIGNAL_META[key].help}
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${SIGNAL_META[key].badge}`}
+                        >
+                          {SIGNAL_META[key].short} {fmtSignal(signalValue(s.currentWeek, key))}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 </button>
@@ -584,12 +592,14 @@ const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken }) 
           ) : error ? (
             <p className="text-red-500">{error}</p>
           ) : (
+            <>
+            {allSignalsEmpty(history) && <SignalsEmptyNote />}
             <div className="bg-[#f4f4f5] border border-gray-200 rounded-2xl p-3.5">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between gap-3 mb-3">
                 <h3 className="text-xl md:text-2xl font-bold text-black">
                   Student Metrics: {selectedStudentName}
                 </h3>
-                <div className="w-8 h-8 rounded-full bg-gray-300 text-gray-700 text-xs font-semibold flex items-center justify-center">
+                <div className="w-8 h-8 shrink-0 rounded-full bg-gray-300 text-gray-700 text-xs font-semibold flex items-center justify-center">
                   {selectedStudent.firstName[0]}{selectedStudent.lastName[0]}
                 </div>
               </div>
@@ -599,79 +609,87 @@ const TeacherMetrics: React.FC<TeacherMetricsProps> = ({ classId, adminToken }) 
                   <div className="px-3 py-2 border-b border-gray-200 bg-white text-lg font-bold text-black">
                     Last three weeks:
                   </div>
-                  <div className="p-3 space-y-3">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedMetric('understanding')}
-                      className={`w-full text-left border-b border-gray-200 pb-2 rounded-lg px-1 ${
-                        selectedMetric === 'understanding' ? 'bg-green-50' : ''
-                      }`}
-                    >
-                      <div className="text-3xl font-bold text-green-700">{fmtScore(lastThreeWeekAverages.understanding)}</div>
-                      <div className="text-base text-gray-700 mt-1">Understanding</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedMetric('aiDependency')}
-                      className={`w-full text-left border-b border-gray-200 pb-2 rounded-lg px-1 ${
-                        selectedMetric === 'aiDependency' ? 'bg-red-50' : ''
-                      }`}
-                    >
-                      <div className="text-3xl font-bold text-green-700">{fmtScore(lastThreeWeekAverages.aiDependency)}</div>
-                      <div className="text-base text-gray-700 mt-1">AI Dependency</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedMetric('accuracy')}
-                      className={`w-full text-left rounded-lg px-1 ${
-                        selectedMetric === 'accuracy' ? 'bg-blue-50' : ''
-                      }`}
-                    >
-                      <div className="text-3xl font-bold text-green-700">{fmtScore(lastThreeWeekAverages.accuracy)}</div>
-                      <div className="text-base text-gray-700 mt-1">Accuracy</div>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-2xl border border-gray-200 p-4">
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {(['understanding', 'accuracy', 'aiDependency'] as MetricKey[]).map((metric) => (
+                  <div className="p-3 grid grid-cols-2 lg:grid-cols-1 gap-2">
+                    {SIGNAL_KEYS.map((key) => (
                       <button
-                        key={metric}
+                        key={key}
                         type="button"
-                        onClick={() => setSelectedMetric(metric)}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                          selectedMetric === metric ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        onClick={() => setSelectedMetric(key)}
+                        title={SIGNAL_META[key].help}
+                        className={`w-full text-left rounded-lg px-2 py-1.5 border-b border-gray-200 lg:last:border-b-0 ${
+                          selectedMetric === key ? SIGNAL_META[key].selectedBg : ''
                         }`}
                       >
-                        {METRIC_META[metric].label}
+                        <div className="text-2xl sm:text-3xl font-bold" style={{ color: SIGNAL_META[key].color }}>
+                          {fmtSignal(lastThreeWeekAverages[key])}
+                        </div>
+                        <div className="text-sm sm:text-base text-gray-700 mt-1">{SIGNAL_META[key].label}</div>
                       </button>
                     ))}
                   </div>
-                  <h4 className="text-lg md:text-xl font-semibold text-center text-black mb-2.5">
-                    {METRIC_META[selectedMetric].label} Over Time (8 Weeks) - {selectedStudentName}
+                </div>
+
+                <div className="bg-white rounded-2xl border border-gray-200 p-4 min-w-0">
+                  <MetricPills selected={selectedMetric} onSelect={setSelectedMetric} />
+                  <h4 className="text-lg md:text-xl font-semibold text-center text-black mb-1">
+                    {SIGNAL_META[selectedMetric].label} Over Time (8 Weeks) - {selectedStudentName}
                   </h4>
-                  <div className="h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={chartData}>
-                        <CartesianGrid stroke="#e5e7eb" />
-                        <XAxis dataKey="weekLabel" tick={{ fontSize: 11 }} />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                        <Tooltip formatter={(value: number | null) => `${Math.round(Number(value ?? 0))}%`} />
-                        <Line
-                          type="monotone"
-                          dataKey="value"
-                          stroke={METRIC_META[selectedMetric].color}
-                          strokeWidth={3}
-                          dot={{ r: 4, fill: METRIC_META[selectedMetric].color }}
-                          connectNulls
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
+                  <p className="text-xs text-gray-500 text-center mb-2.5 max-w-xl mx-auto">
+                    {SIGNAL_META[selectedMetric].help}
+                  </p>
+                  <div className="h-[260px] sm:h-[300px] w-full">
+                    <SignalLineChart data={chartData} metric={selectedMetric} />
                   </div>
                 </div>
               </div>
             </div>
+            </>
+          )}
+
+          {canOpenCheckins && onOpenCheckin && (
+            <section className="bg-white rounded-2xl border border-gray-200 p-4" aria-labelledby="student-checkins-heading">
+              <h3 id="student-checkins-heading" className="text-lg font-bold text-black">Check-ins</h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                The unit check-ins behind these numbers. Open one to see {selectedStudent.firstName}'s answers in its briefing.
+              </p>
+              {checkinsError ? (
+                <p className="text-sm text-gray-500 mt-3">Couldn't load check-ins: {checkinsError}</p>
+              ) : studentCheckins === null ? (
+                <p className="text-sm text-gray-500 mt-3">Loading check-ins…</p>
+              ) : studentCheckins.length === 0 ? (
+                <p className="text-sm text-gray-500 mt-3">No unit check-ins in this class yet.</p>
+              ) : (
+                <ul className="mt-2 divide-y divide-gray-100">
+                  {studentCheckins.map((c) => {
+                    const p = c.student;
+                    return (
+                      <li key={c.assignment_id} className="py-2.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 break-words">{c.title}</p>
+                          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs text-gray-600">
+                            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 ${STAGE_STYLE[p.stage].tile}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${STAGE_STYLE[p.stage].dot}`} aria-hidden="true" />
+                              {STAGE_LABEL[p.stage]}
+                            </span>
+                            {c.lesson_date && <span>Lesson {formatDay(c.lesson_date)}</span>}
+                            {p.total > 0 && <span>{p.resolved}/{p.total} questions resolved</span>}
+                            {p.first_try_accuracy != null && <span>First try {fmtSignal(p.first_try_accuracy)}</span>}
+                            {p.understanding != null && p.answered > 0 && <span>Understanding {fmtSignal(p.understanding)}</span>}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onOpenCheckin(c.assignment_id)}
+                          className="self-start sm:self-auto shrink-0 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:text-black hover:bg-gray-50"
+                        >
+                          Open briefing
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
           )}
         </div>
         {learnMoreModal}
