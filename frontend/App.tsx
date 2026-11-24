@@ -178,6 +178,8 @@ const App: React.FC = () => {
   const [newAssignmentTypeDb, setNewAssignmentTypeDb] = useState<string>('homework');
   /** Library unit to preselect in "New unit check-in" (set by the Library's "Make a check-in" button). */
   const [checkinUnit, setCheckinUnit] = useState<string | null>(null);
+  /** Lesson day (YYYY-MM-DD) to start "New unit check-in" on (set from a day on the Scheduler calendar). */
+  const [checkinLessonDate, setCheckinLessonDate] = useState<string | null>(null);
   const isRestoringFromHistory = useRef(false);
 
   const refetchClassAssignments = useCallback(() => {
@@ -217,6 +219,23 @@ const App: React.FC = () => {
   const openBriefing = (classId: number, assignmentId: number) => {
     rememberBriefingCheckin(classId, assignmentId);
     setView('AGENT_INSIGHTS');
+  };
+
+  /** Open a check-in's (or any assignment's) page: reload the class's assignments, then select it. */
+  const openAssignmentPage = (classId: number, assignmentId: number) => {
+    fetchClassAssignments(classId)
+      .then((rows) => {
+        const mapped = rows.map(mapApiAssignmentToAssignment);
+        setClassAssignments(mapped);
+        const found = mapped.find((a) => Number(a.id) === assignmentId);
+        if (found) {
+          setSelectedAssignment(found);
+          setView('ASSIGNMENT_VIEW');
+        } else {
+          setView('ASSIGNMENT_LIST');
+        }
+      })
+      .catch(() => { refetchClassAssignments(); setView('ASSIGNMENT_LIST'); });
   };
 
   // Sync app state with browser history so back/forward work in-app
@@ -451,7 +470,7 @@ const App: React.FC = () => {
           </div>
           <button
             type="button"
-            onClick={() => { setCheckinUnit(null); setView('CHECKIN_NEW'); }}
+            onClick={() => { setCheckinUnit(null); setCheckinLessonDate(null); setView('CHECKIN_NEW'); }}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors"
           >
             <span className="text-base leading-none">+</span> New unit check-in
@@ -613,24 +632,10 @@ const App: React.FC = () => {
           <UnitCheckinEditor
             classId={selectedClass.class_id}
             initialUnit={checkinUnit ?? undefined}
+            initialLessonDate={checkinLessonDate ?? undefined}
             onCancel={() => { refetchClassAssignments(); setView('ASSIGNMENT_LIST'); }}
             onOpenApprovals={() => setView('AGENT_APPROVALS')}
-            onViewCheckin={(assignmentId) => {
-              // Just approved in place: open the new check-in's page.
-              fetchClassAssignments(selectedClass.class_id)
-                .then((rows) => {
-                  const mapped = rows.map(mapApiAssignmentToAssignment);
-                  setClassAssignments(mapped);
-                  const created = mapped.find((a) => Number(a.id) === assignmentId);
-                  if (created) {
-                    setSelectedAssignment(created);
-                    setView('ASSIGNMENT_VIEW');
-                  } else {
-                    setView('ASSIGNMENT_LIST');
-                  }
-                })
-                .catch(() => { refetchClassAssignments(); setView('ASSIGNMENT_LIST'); });
-            }}
+            onViewCheckin={(assignmentId) => openAssignmentPage(selectedClass.class_id, assignmentId)}
           />
         ) : null;
       case 'ASSIGNMENT_VIEW':
@@ -737,10 +742,14 @@ const App: React.FC = () => {
             <Panel
               classId={selectedClass.class_id}
               teacherId={session.userId ?? 0}
-              onStartCheckin={(unit) => {
+              onStartCheckin={(unit, lessonDate) => {
                 setCheckinUnit(unit);
+                setCheckinLessonDate(lessonDate ?? null);
                 setView('CHECKIN_NEW');
               }}
+              onOpenCheckin={(assignmentId) => openAssignmentPage(selectedClass.class_id, assignmentId)}
+              onOpenBriefing={(assignmentId) => openBriefing(selectedClass.class_id, assignmentId)}
+              onOpenApprovals={() => setView('AGENT_APPROVALS')}
             />
           );
         }

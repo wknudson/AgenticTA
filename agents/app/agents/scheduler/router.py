@@ -12,6 +12,7 @@ from .agent import build_agent, demo_script, publish_script, runner
 from .calendar import (EventIn, EventPatch, RuleProblem, TermSettings, add_event, load_term, remove_event,
                        save_term, update_event)
 from .drafting import draft_events, suggest_term
+from .feed import build_feed, checkin_suggestions
 from .tools import check_conflicts, propose_events
 import json
 
@@ -111,6 +112,22 @@ def events(class_id: int, status: str | None = None):
     with connect() as conn:
         rows = conn.execute(sql + " ORDER BY date", params).fetchall()
     return {"events": [dict(r) for r in rows]}
+
+
+@router.get("/feed")
+def calendar_feed(class_id: int, start: date | None = None, end: date | None = None):
+    """Everything the month calendar shows for [start, end] (default: the term, else
+    today-30 .. today+120): term, events, check-ins, drafts and graded assignments. No AI."""
+    try:
+        return build_feed(class_id, start, end)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.get("/checkin-suggestions")
+def suggest_checkins(class_id: int):
+    """No AI: a lesson day per Library unit, 2 school days before its next quiz or test."""
+    return checkin_suggestions(class_id)
 
 
 @router.get("/term")

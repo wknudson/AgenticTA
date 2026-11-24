@@ -20,6 +20,8 @@ interface Props {
   onOpenApprovals: () => void;
   /** Preselect this unit (e.g. "Make a check-in" from a Library unit). Ignored if it has no filed files. */
   initialUnit?: string;
+  /** Start on this lesson day (YYYY-MM-DD), e.g. from a day on the Scheduler calendar. The due follows it. */
+  initialLessonDate?: string;
   /** After approving in place: open the published check-in. Without it, the success screen says where to find it. */
   onViewCheckin?: (assignmentId: number) => void;
 }
@@ -33,7 +35,7 @@ const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, N
  * (UnitCheckinReview) to fix, approve or reject; it also waits in Approvals. Nothing reaches
  * students until the teacher approves it.
  */
-const UnitCheckinEditor: React.FC<Props> = ({ classId, onCancel, onOpenApprovals, initialUnit, onViewCheckin }) => {
+const UnitCheckinEditor: React.FC<Props> = ({ classId, onCancel, onOpenApprovals, initialUnit, initialLessonDate, onViewCheckin }) => {
   const [units, setUnits] = useState<LibraryUnit[] | null>(null);
   const [unitsError, setUnitsError] = useState('');
   const [aiReady, setAiReady] = useState<boolean | null>(null);
@@ -41,6 +43,7 @@ const UnitCheckinEditor: React.FC<Props> = ({ classId, onCancel, onOpenApprovals
 
   const [unit, setUnit] = useState(initialUnit ?? '');
   const [lessonDate, setLessonDate] = useState(() => {
+    if (initialLessonDate && /^\d{4}-\d{2}-\d{2}$/.test(initialLessonDate)) return initialLessonDate;
     const d = new Date();
     d.setDate(d.getDate() + 2);
     return isoDay(d);
