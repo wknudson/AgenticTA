@@ -39,16 +39,19 @@ data/               local SQLite DBs + uploaded files (gitignored)
 - Create, edit, and delete classes
 - Add existing students to a class, create new students in a class, and remove students from a class
 - Create assignments with a due date, max points, allowed submission attempts, an attempt scoring policy (`latest`, `highest`, `average`) and AI tutor instructions
-- Upload PDFs for assignment generation context
-- AI-generated questions (multiple choice, true/false, short answer, select-all-that-apply)
-- Teacher grades view and per-class / per-student metrics (weekly snapshots)
+- **Unit check-ins (flipped classroom, the default):** pick a Library unit and a lesson date. The agents build study games and check-in questions, and you approve them once. Before class you get a briefing: who's done, what the class is stuck on, struggles for each student, and a suggested warm-up. See [docs/flipped-classroom-plan.md](docs/flipped-classroom-plan.md).
+- Legacy graded assignments: upload PDFs for context; AI-generated questions (multiple choice, true/false, short answer, select-all-that-apply)
+- Teacher grades view and per-class / per-student metrics (weekly snapshots of the learning signals)
 
 ### Student flow
 
-- Student login via shared assignment link; JWT-authenticated assignment access and submission
-- Multi-attempt submissions, auto-grading, AI-assisted grading fallback for short answers
-- AI tutor chat that refuses direct/near-verbatim assignment-question answering
-- Per-attempt and aggregate scoring: points, percentage, letter grade, understanding, AI dependency, engagement
+- Student login via shared assignment link; JWT-authenticated access, in both the Express API and the agents service
+- **Check-ins:**
+  - **Practice first:** flashcards, matching and fill-in, with points, streaks and levels, and missed cards come back. A mastery bar unlocks the check-in.
+  - **The check-in:** every question is attempted, and each miss is fixed with the AI tutor (the student gives the right answer plus an explanation in their own words). It's graded on completion.
+  - **The tutor** follows the teacher's setting: hints only, or the answer after honest tries.
+- **Learning signals** replace the old AI Dependency score: practice mastery, first-try accuracy, misses fixed with help, and understanding
+- Legacy graded assignments: multi-attempt submissions, auto-grading, AI-assisted grading fallback for short answers
 
 ### Admin flow
 

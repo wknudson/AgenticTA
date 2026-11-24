@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 import { query } from '../db/connection.js';
 import { requireAdminAuth } from '../auth/adminToken.js';
+import { weeklySignals } from './metricsPayload.js';
 
 const router = express.Router();
 
@@ -182,9 +183,11 @@ router.get('/metrics/global', async (req: express.Request, res: express.Response
          sm.week_start_date,
          sm.week_end_date,
          sm.week_number,
-         AVG(sm.accuracy_score) FILTER (WHERE sm.accuracy_score IS NOT NULL) AS avg_accuracy,
-         AVG(sm.ai_dependency_score) FILTER (WHERE sm.ai_dependency_score IS NOT NULL) AS avg_ai_dependency,
-         AVG(sm.understanding_score) FILTER (WHERE sm.understanding_score IS NOT NULL) AS avg_understanding
+         AVG(sm.accuracy_score) AS accuracy_score,
+         AVG(sm.understanding_score) AS understanding_score,
+         AVG(sm.practice_score) AS practice_score,
+         AVG(sm.first_try_accuracy) AS first_try_accuracy,
+         AVG(sm.fixed_with_help) AS fixed_with_help
        FROM student_metrics sm
        INNER JOIN student_classes sc
          ON sc.student_id = sm.student_id AND sc.class_id = sm.class_id
@@ -202,29 +205,17 @@ router.get('/metrics/global', async (req: express.Request, res: express.Response
       week_start_date: string | null;
       week_end_date: string | null;
       week_number: number | null;
-      avg_accuracy: string | number | null;
-      avg_ai_dependency: string | number | null;
-      avg_understanding: string | number | null;
     }>;
 
     const weekly = [...rows].reverse().map((row) => ({
       weekNumber: Number(row.week_number),
       weekStartDate: row.week_start_date ?? '',
       weekEndDate: row.week_end_date ?? '',
-      accuracy: row.avg_accuracy != null ? Number(row.avg_accuracy) : null,
-      aiDependency: row.avg_ai_dependency != null ? Number(row.avg_ai_dependency) : null,
-      understanding: row.avg_understanding != null ? Number(row.avg_understanding) : null,
+      ...weeklySignals(row),
     }));
 
     const latest = rows[0];
-    const currentAverages =
-      latest == null
-        ? null
-        : {
-            accuracy: latest.avg_accuracy != null ? Number(latest.avg_accuracy) : null,
-            aiDependency: latest.avg_ai_dependency != null ? Number(latest.avg_ai_dependency) : null,
-            understanding: latest.avg_understanding != null ? Number(latest.avg_understanding) : null,
-          };
+    const currentAverages = latest == null ? null : weeklySignals(latest);
     const currentWeekMeta =
       latest == null
         ? null
@@ -270,7 +261,7 @@ router.get('/classes/:classId/grades', async (req: express.Request, res: express
 
     const assignmentsResult = await query(
       `SELECT assignment_id, assignment_name, description, ai_params, type, max_points, due_date, allowed_submissions,
-              COALESCE(keep_type, attempt_scoring_policy) AS keep_type
+              COALESCE(keep_type, attempt_scoring_policy) AS keep_type, mode, unit
        FROM assignments
        WHERE class_id = $1
        ORDER BY due_date ASC NULLS LAST`,
@@ -288,7 +279,8 @@ router.get('/classes/:classId/grades', async (req: express.Request, res: express
 
     const gradesResult = await query(
       `SELECT sg.student_id, sg.assignment_id, sg.points_earned, sg.percentage,
-              sg.letter_grade, sg.submission_date, sg.understanding_score, sg.ai_dependency_score
+              sg.letter_grade, sg.submission_date, sg.understanding_score,
+              sg.practice_mastery, sg.first_try_accuracy, sg.fixed_with_help
        FROM student_grades sg
        JOIN assignments a ON a.assignment_id = sg.assignment_id
        WHERE a.class_id = $1`,
@@ -323,7 +315,9 @@ router.get('/classes/:classId/grades', async (req: express.Request, res: express
           letterGrade: grade?.letter_grade ?? null,
           submissionDate: grade?.submission_date ?? null,
           understandingScore: grade?.understanding_score ?? null,
-          aiDependencyScore: grade?.ai_dependency_score ?? null,
+          practiceMastery: grade?.practice_mastery ?? null,
+          firstTryAccuracy: grade?.first_try_accuracy ?? null,
+          fixedWithHelp: grade?.fixed_with_help ?? null,
         };
       });
       const submitted = studentGrades.filter((s) => s.submitted);
@@ -338,14 +332,19 @@ router.get('/classes/:classId/grades', async (req: express.Request, res: express
         description: a.description,
         aiParams: a.ai_params,
         type: a.type,
+        mode: a.mode === 'checkin' ? 'checkin' : 'graded',
+        unit: a.unit ?? null,
         maxPoints: a.max_points,
         dueDate: a.due_date,
         allowedSubmissions: a.allowed_submissions,
         attemptScoringPolicy: a.keep_type,
         averages: {
+          // percentage: the score on graded work, completion on check-ins
           accuracy: avg(submitted.map((s) => s.percentage)),
           understanding: avg(submitted.map((s) => s.understandingScore)),
-          aiDependency: avg(submitted.map((s) => s.aiDependencyScore)),
+          practiceMastery: avg(submitted.map((s) => s.practiceMastery)),
+          firstTryAccuracy: avg(submitted.map((s) => s.firstTryAccuracy)),
+          fixedWithHelp: avg(submitted.map((s) => s.fixedWithHelp)),
         },
         students: studentGrades,
       };
@@ -375,9 +374,10 @@ router.get('/classes/:classId/metrics/students', async (req: express.Request, re
     );
 
     const metricsRes = await query(
-      `SELECT student_id, accuracy_score, ai_dependency_score, understanding_score
+      `SELECT student_id, accuracy_score, understanding_score, practice_score, first_try_accuracy, fixed_with_help
        FROM (
-         SELECT sm.student_id, sm.accuracy_score, sm.ai_dependency_score, sm.understanding_score,
+         SELECT sm.student_id, sm.accuracy_score, sm.understanding_score,
+           sm.practice_score, sm.first_try_accuracy, sm.fixed_with_help,
            ROW_NUMBER() OVER (
              PARTITION BY sm.student_id
              ORDER BY sm.week_start_date DESC NULLS LAST, sm.week_number DESC
@@ -400,11 +400,7 @@ router.get('/classes/:classId/metrics/students', async (req: express.Request, re
         firstName: s.first_name,
         lastName: s.last_name,
         username: s.username,
-        currentWeek: {
-          accuracy: m?.accuracy_score != null ? Number(m.accuracy_score) : null,
-          aiDependency: m?.ai_dependency_score != null ? Number(m.ai_dependency_score) : null,
-          understanding: m?.understanding_score != null ? Number(m.understanding_score) : null,
-        },
+        currentWeek: weeklySignals(m),
       };
     });
 
@@ -443,8 +439,10 @@ router.get('/classes/:classId/metrics/students/:studentId', async (req: express.
          sm.week_end_date,
          sm.week_number,
          sm.accuracy_score,
-         sm.ai_dependency_score,
-         sm.understanding_score
+         sm.understanding_score,
+         sm.practice_score,
+         sm.first_try_accuracy,
+         sm.fixed_with_help
        FROM student_metrics sm
        WHERE sm.student_id = $1
          AND sm.class_id = $2
@@ -457,9 +455,7 @@ router.get('/classes/:classId/metrics/students/:studentId', async (req: express.
       weekNumber: Number(row.week_number),
       weekStartDate: row.week_start_date,
       weekEndDate: row.week_end_date,
-      accuracy: row.accuracy_score != null ? Number(row.accuracy_score) : null,
-      aiDependency: row.ai_dependency_score != null ? Number(row.ai_dependency_score) : null,
-      understanding: row.understanding_score != null ? Number(row.understanding_score) : null,
+      ...weeklySignals(row),
     }));
 
     return res.json({
@@ -490,9 +486,11 @@ router.get('/classes/:classId/metrics/class-averages', async (req: express.Reque
          sm.week_start_date,
          sm.week_end_date,
          sm.week_number,
-         AVG(sm.accuracy_score) FILTER (WHERE sm.accuracy_score IS NOT NULL) AS avg_accuracy,
-         AVG(sm.ai_dependency_score) FILTER (WHERE sm.ai_dependency_score IS NOT NULL) AS avg_ai_dependency,
-         AVG(sm.understanding_score) FILTER (WHERE sm.understanding_score IS NOT NULL) AS avg_understanding
+         AVG(sm.accuracy_score) AS accuracy_score,
+         AVG(sm.understanding_score) AS understanding_score,
+         AVG(sm.practice_score) AS practice_score,
+         AVG(sm.first_try_accuracy) AS first_try_accuracy,
+         AVG(sm.fixed_with_help) AS fixed_with_help
        FROM student_metrics sm
        INNER JOIN student_classes sc
          ON sc.student_id = sm.student_id AND sc.class_id = sm.class_id
@@ -507,9 +505,6 @@ router.get('/classes/:classId/metrics/class-averages', async (req: express.Reque
       week_start_date: string | null;
       week_end_date: string | null;
       week_number: number | null;
-      avg_accuracy: string | number | null;
-      avg_ai_dependency: string | number | null;
-      avg_understanding: string | number | null;
     }>;
 
     const weekly = [...rows]
@@ -518,20 +513,11 @@ router.get('/classes/:classId/metrics/class-averages', async (req: express.Reque
         weekNumber: Number(row.week_number),
         weekStartDate: row.week_start_date ?? '',
         weekEndDate: row.week_end_date ?? '',
-        accuracy: row.avg_accuracy != null ? Number(row.avg_accuracy) : null,
-        aiDependency: row.avg_ai_dependency != null ? Number(row.avg_ai_dependency) : null,
-        understanding: row.avg_understanding != null ? Number(row.avg_understanding) : null,
+        ...weeklySignals(row),
       }));
 
     const latest = rows[0];
-    const currentAverages =
-      latest == null
-        ? null
-        : {
-            accuracy: latest.avg_accuracy != null ? Number(latest.avg_accuracy) : null,
-            aiDependency: latest.avg_ai_dependency != null ? Number(latest.avg_ai_dependency) : null,
-            understanding: latest.avg_understanding != null ? Number(latest.avg_understanding) : null,
-          };
+    const currentAverages = latest == null ? null : weeklySignals(latest);
     const currentWeekMeta =
       latest == null
         ? null

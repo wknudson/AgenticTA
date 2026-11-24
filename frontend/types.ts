@@ -13,6 +13,8 @@ export type ViewState =
   | 'ASSIGNMENT_VIEW'
   | 'VIEW_AS_STUDENT'
   | 'ASSIGNMENT_CREATE_SUCCESS'
+  /** "New unit check-in" (components/checkin/UnitCheckinEditor.tsx) */
+  | 'CHECKIN_NEW'
   | 'GRADES'
   | 'METRICS'
   | 'ADMIN_CLASS_SELECT'
@@ -73,20 +75,9 @@ export interface Assignment {
   attemptScoringPolicy?: 'latest' | 'highest' | 'average';
   materials?: string[];
   assignmentLink?: string;
-}
-
-export interface MetricData {
-  week: number;
-  value: number;
-}
-
-export interface StudentStats {
-  understanding: number;
-  dependency: number;
-  engagement: number;
-  history: {
-    understanding: MetricData[];
-    dependency: MetricData[];
-    engagement: MetricData[];
-  }
+  /** Flipped classroom: 'checkin' = unit check-in (games + check-in); 'graded' = legacy */
+  mode?: 'checkin' | 'graded' | string;
+  unit?: string | null;
+  /** YYYY-MM-DD of the lesson a check-in prepares for */
+  lessonDate?: string | null;
 }

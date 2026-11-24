@@ -15,14 +15,16 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import {
+  SIGNAL_KEYS,
+  SIGNAL_META,
+  LearningSignalsExplainer,
+  fmtSignal,
+  signalValue,
+  type SignalKey,
+} from './learningSignals';
 
-type MetricKey = 'accuracy' | 'aiDependency' | 'understanding';
-
-const METRIC_META: Record<MetricKey, { label: string; color: string }> = {
-  accuracy: { label: 'Accuracy', color: '#2563eb' },
-  aiDependency: { label: 'AI Dependency', color: '#dc2626' },
-  understanding: { label: 'Understanding', color: '#16a34a' },
-};
+type MetricKey = SignalKey;
 
 const EMPTY_FILTERS: AdminGlobalMetricsFilters = {
   subjectCodes: [],
@@ -30,10 +32,6 @@ const EMPTY_FILTERS: AdminGlobalMetricsFilters = {
   periods: [],
   teacherIds: [],
 };
-
-function fmtScore(v: number | null): string {
-  return v == null ? '--' : `${Math.round(v)}%`;
-}
 
 function fmtWeekRange(start: string, end: string): string {
   if (!start?.trim() && !end?.trim()) return '';
@@ -147,7 +145,8 @@ const AdminGlobalMetrics: React.FC<AdminGlobalMetricsProps> = ({ adminToken }) =
   const [data, setData] = useState<ClassMetricAveragesPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedMetric, setSelectedMetric] = useState<MetricKey>('accuracy');
+  const [selectedMetric, setSelectedMetric] = useState<MetricKey>('understanding');
+  const [showExplainer, setShowExplainer] = useState(false);
 
   const filterKey = useMemo(
     () =>
@@ -221,12 +220,7 @@ const AdminGlobalMetrics: React.FC<AdminGlobalMetricsProps> = ({ adminToken }) =
     if (!data?.weekly?.length) return [];
     return data.weekly.map((h, index) => ({
       weekLabel: `Week ${index + 1}`,
-      value:
-        selectedMetric === 'accuracy'
-          ? h.accuracy
-          : selectedMetric === 'aiDependency'
-            ? h.aiDependency
-            : h.understanding,
+      value: signalValue(h, selectedMetric),
     }));
   }, [data?.weekly, selectedMetric]);
 
@@ -235,9 +229,23 @@ const AdminGlobalMetrics: React.FC<AdminGlobalMetricsProps> = ({ adminToken }) =
       <div>
         <h2 className="text-3xl sm:text-4xl font-bold text-slate-900">Global metrics</h2>
         <p className="text-sm text-slate-600 mt-1">
-          Averages across student weekly metrics. Pick any combination of subjects, semesters, periods, and
-          teachers; each list only shows values that still exist given your other choices.
+          Averages of students' weekly learning signals: practice, first-try accuracy, fixed with help, and
+          understanding. Pick any combination of subjects, semesters, periods, and teachers; each list only shows
+          values that still exist given your other choices.
         </p>
+        <button
+          type="button"
+          onClick={() => setShowExplainer((v) => !v)}
+          className="mt-2 text-sm font-medium text-blue-600 hover:underline"
+          aria-expanded={showExplainer}
+        >
+          {showExplainer ? 'Hide what these mean' : 'What do these mean?'}
+        </button>
+        {showExplainer && (
+          <div className="mt-3 bg-white border border-slate-200 rounded-2xl p-4">
+            <LearningSignalsExplainer compact />
+          </div>
+        )}
       </div>
 
       {options && (
@@ -304,50 +312,52 @@ const AdminGlobalMetrics: React.FC<AdminGlobalMetricsProps> = ({ adminToken }) =
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <span className="px-3 py-1.5 rounded-full text-sm font-medium bg-blue-50 text-blue-800">
-                  Accuracy {fmtScore(data.currentAverages.accuracy)}
-                </span>
-                <span className="px-3 py-1.5 rounded-full text-sm font-medium bg-red-50 text-red-800">
-                  AI Dependency {fmtScore(data.currentAverages.aiDependency)}
-                </span>
-                <span className="px-3 py-1.5 rounded-full text-sm font-medium bg-green-50 text-green-800">
-                  Understanding {fmtScore(data.currentAverages.understanding)}
-                </span>
+                {SIGNAL_KEYS.map((key) => (
+                  <span
+                    key={key}
+                    title={SIGNAL_META[key].help}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium ${SIGNAL_META[key].badge}`}
+                  >
+                    {SIGNAL_META[key].label} {fmtSignal(signalValue(data.currentAverages, key))}
+                  </span>
+                ))}
               </div>
             </div>
           )}
 
           <div className="bg-white rounded-2xl border border-slate-200 p-4">
             <div className="flex flex-wrap gap-2 mb-3">
-              {(['understanding', 'accuracy', 'aiDependency'] as MetricKey[]).map((m) => (
+              {SIGNAL_KEYS.map((m) => (
                 <button
                   key={m}
                   type="button"
                   onClick={() => setSelectedMetric(m)}
+                  title={SIGNAL_META[m].help}
                   className={`px-3 py-1.5 rounded-full text-sm font-medium ${
                     selectedMetric === m ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
-                  {METRIC_META[m].label}
+                  {SIGNAL_META[m].label}
                 </button>
               ))}
             </div>
-            <h3 className="text-lg font-semibold text-center text-slate-900 mb-2">
-              Global average: {METRIC_META[selectedMetric].label} (up to 8 weeks)
+            <h3 className="text-lg font-semibold text-center text-slate-900 mb-1">
+              Global average: {SIGNAL_META[selectedMetric].label} (up to 8 weeks)
             </h3>
-            <div className="h-[300px] w-full">
+            <p className="text-xs text-slate-500 text-center mb-2 max-w-xl mx-auto">{SIGNAL_META[selectedMetric].help}</p>
+            <div className="h-[260px] sm:h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
                   <CartesianGrid stroke="#e5e7eb" />
                   <XAxis dataKey="weekLabel" tick={{ fontSize: 11 }} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(value: number | null) => `${Math.round(Number(value ?? 0))}%`} />
+                  <Tooltip formatter={(value: number | null) => [fmtSignal(value), SIGNAL_META[selectedMetric].label]} />
                   <Line
                     type="monotone"
                     dataKey="value"
-                    stroke={METRIC_META[selectedMetric].color}
+                    stroke={SIGNAL_META[selectedMetric].color}
                     strokeWidth={3}
-                    dot={{ r: 4, fill: METRIC_META[selectedMetric].color }}
+                    dot={{ r: 4, fill: SIGNAL_META[selectedMetric].color }}
                     connectNulls
                   />
                 </LineChart>
@@ -361,9 +371,11 @@ const AdminGlobalMetrics: React.FC<AdminGlobalMetricsProps> = ({ adminToken }) =
                 <tr className="border-b border-slate-200 bg-slate-50">
                   <th className="p-2 font-semibold text-slate-700">Week #</th>
                   <th className="p-2 font-semibold text-slate-700">Dates</th>
-                  <th className="p-2 font-semibold text-blue-800">Accuracy</th>
-                  <th className="p-2 font-semibold text-red-800">AI dependency</th>
-                  <th className="p-2 font-semibold text-green-800">Understanding</th>
+                  {SIGNAL_KEYS.map((key) => (
+                    <th key={key} className="p-2 font-semibold whitespace-nowrap" style={{ color: SIGNAL_META[key].color }}>
+                      {SIGNAL_META[key].short}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -373,9 +385,9 @@ const AdminGlobalMetrics: React.FC<AdminGlobalMetricsProps> = ({ adminToken }) =
                     <td className="p-2 text-slate-600 whitespace-nowrap">
                       {fmtWeekRange(w.weekStartDate, w.weekEndDate) || '—'}
                     </td>
-                    <td className="p-2">{fmtScore(w.accuracy)}</td>
-                    <td className="p-2">{fmtScore(w.aiDependency)}</td>
-                    <td className="p-2">{fmtScore(w.understanding)}</td>
+                    {SIGNAL_KEYS.map((key) => (
+                      <td key={key} className="p-2">{fmtSignal(signalValue(w, key))}</td>
+                    ))}
                   </tr>
                 ))}
               </tbody>

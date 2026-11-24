@@ -85,6 +85,10 @@ def decide(approval_id: int, body: DecisionIn):
     try:
         return approvals.decide(approval_id, body.type, edited_args=body.edited_args, message=body.message,
                                 decided_by=body.decided_by, role=body.role)
+    except approvals.ResumeFailed as e:
+        if e.still_waiting:
+            raise HTTPException(503, f"Couldn't carry out the decision: {e}. It's still pending, so you can try again.")
+        raise HTTPException(500, f"The approved action ran, but a later step failed: {e}")
     except LookupError as e:
         raise HTTPException(404, str(e))
     except PermissionError as e:

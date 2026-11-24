@@ -8,24 +8,30 @@ from ollama import ResponseError
 from app.shared.agent_router import make_router, require_models
 from app.shared.db import connect
 
+from .briefing import router as briefing_router
 from .pipeline import (
     AssignmentNotDue,
+    analysis_allowed,
     assignment_for_analysis,
     due_date_status,
     run as run_pipeline,
 )
 
 router = make_router("misconceptions")
+# Teacher briefing for check-ins (GET /checkins, GET /briefing, POST/PUT /briefing/warmup).
+router.include_router(briefing_router)
 
 
 @router.get("/assignments")
 def assignments(class_id: int):
     with connect() as conn:
         rows = [dict(row) for row in conn.execute(
-            "SELECT assignment_id, assignment_name, due_date FROM assignments WHERE class_id = ? ORDER BY due_date, assignment_name",
+            "SELECT assignment_id, assignment_name, due_date, mode FROM assignments WHERE class_id = ? ORDER BY due_date, assignment_name",
             (class_id,),
         ).fetchall()]
-    return {"assignments": [{**row, "analysis_status": due_date_status(row["due_date"])} for row in rows]}
+    # Check-ins can be analyzed before their due date (the briefing is read before the lesson).
+    return {"assignments": [{**row, "analysis_status": "eligible" if analysis_allowed(row) else due_date_status(row["due_date"])}
+                            for row in rows]}
 
 
 @router.post("/run")
@@ -34,7 +40,7 @@ def run(class_id: int = Query(...), assignment_id: int | None = None):
         assignment = assignment_for_analysis(class_id, assignment_id)
         if assignment is None:
             raise HTTPException(404, "Assignment not found for this class.")
-        if due_date_status(assignment["due_date"]) != "eligible":
+        if not analysis_allowed(assignment):
             raise HTTPException(409, "Chat analysis is available after the assignment due date.")
     require_models("misconceptions", "local")
     try:
@@ -56,7 +62,7 @@ def demo(class_id: int = Query(...), assignment_id: int | None = None):
         assignment = assignment_for_analysis(class_id, assignment_id)
         if assignment is None:
             raise HTTPException(404, "Assignment not found for this class.")
-        if due_date_status(assignment["due_date"]) != "eligible":
+        if not analysis_allowed(assignment):
             raise HTTPException(409, "Chat analysis is available after the assignment due date.")
     return run_pipeline(class_id, assignment_id, offline=True)
 

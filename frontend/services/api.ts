@@ -295,7 +295,11 @@ export interface AssignmentStudentGrade {
   letterGrade: string | null;
   submissionDate: string | null;
   understandingScore?: number | null;
-  aiDependencyScore?: number | null;
+  /** Learning signals (0-100). Null on legacy graded assignments. */
+  practiceMastery?: number | null;
+  firstTryAccuracy?: number | null;
+  /** Null on a check-in when the student had nothing to fix. */
+  fixedWithHelp?: number | null;
 }
 
 export interface AssignmentGradeSummary {
@@ -304,14 +308,20 @@ export interface AssignmentGradeSummary {
   description?: string | null;
   aiParams?: string | null;
   type: string | null;
+  /** 'checkin' = graded on completion with learning signals; 'graded' = legacy */
+  mode?: 'checkin' | 'graded';
+  unit?: string | null;
   maxPoints: number;
   dueDate: string | null;
   allowedSubmissions?: number;
   attemptScoringPolicy?: 'latest' | 'highest' | 'average' | string | null;
   averages?: {
+    /** average percentage: the score on graded work, completion on check-ins */
     accuracy: number | null;
     understanding: number | null;
-    aiDependency: number | null;
+    practiceMastery?: number | null;
+    firstTryAccuracy?: number | null;
+    fixedWithHelp?: number | null;
   };
   students: AssignmentStudentGrade[];
 }
@@ -333,25 +343,36 @@ export async function fetchClassGrades(
   return data.assignments ?? [];
 }
 
+/**
+ * One week of learning signals (0-100, null when there's no data). These replace the old
+ * AI Dependency score. Practice / first try / fixed with help are null for weeks with only
+ * legacy graded work.
+ */
+export interface WeeklyLearningSignals {
+  /** first-try accuracy on check-ins, falling back to the score on legacy graded work */
+  accuracy: number | null;
+  /** first-try accuracy plus half credit for misses fixed without the tutor explaining the answer */
+  understanding: number | null;
+  /** share of practice game items mastered */
+  practice: number | null;
+  /** share of check-in questions right on the first try */
+  firstTryAccuracy: number | null;
+  /** share of missed check-in questions the student worked out with the tutor */
+  fixedWithHelp: number | null;
+}
+
 export interface ClassMetricStudentSummary {
   studentId: number;
   firstName: string;
   lastName: string;
   username: string;
-  currentWeek: {
-    accuracy: number | null;
-    aiDependency: number | null;
-    understanding: number | null;
-  };
+  currentWeek: WeeklyLearningSignals;
 }
 
-export interface StudentMetricHistoryPoint {
+export interface StudentMetricHistoryPoint extends WeeklyLearningSignals {
   weekNumber: number;
   weekStartDate: string;
   weekEndDate: string;
-  accuracy: number | null;
-  aiDependency: number | null;
-  understanding: number | null;
 }
 
 export interface StudentMetricHistoryPayload {
@@ -395,22 +416,15 @@ export async function fetchStudentMetricHistory(
   return { student: data.student, history: data.history ?? [] };
 }
 
-export interface ClassMetricWeekAverage {
+export interface ClassMetricWeekAverage extends WeeklyLearningSignals {
   weekNumber: number;
   weekStartDate: string;
   weekEndDate: string;
-  accuracy: number | null;
-  aiDependency: number | null;
-  understanding: number | null;
 }
 
 export interface ClassMetricAveragesPayload {
   weekly: ClassMetricWeekAverage[];
-  currentAverages: {
-    accuracy: number | null;
-    aiDependency: number | null;
-    understanding: number | null;
-  } | null;
+  currentAverages: WeeklyLearningSignals | null;
   currentWeek: {
     weekNumber: number;
     weekStartDate: string;

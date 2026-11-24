@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { ChevronLeft } from 'lucide-react';
 import Logo from './Logo';
 import { ChevronDown } from './Icons';
 import { ViewState, ClassSummary } from '../types';
 import { COLORS } from '../constants';
-import { AGENT_TABS } from './agents/registry';
+import ClassTabs from './ClassTabs';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -54,13 +55,23 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewChange, on
               <Logo size="sm" />
             </button>
             <div className="h-6 w-[1px] bg-gray-300 mx-1 flex-shrink-0"></div>
-            <span className="text-gray-600 font-medium truncate">
-              {isClassSelect
-                ? 'My Classes'
-                : selectedClass
-                  ? `${selectedClass.class_name}${selectedClass.semester ? ` · ${selectedClass.semester}` : ''}`
-                  : 'My Classes'}
-            </span>
+            {!isClassSelect && selectedClass ? (
+              // Back to the class list (this used to be the "Classes" tab).
+              <button
+                type="button"
+                onClick={onBackToClasses}
+                title="All classes"
+                className="group flex items-center gap-1 min-w-0 rounded-lg -ml-1 pl-1 pr-2 py-1 text-gray-600 font-medium hover:text-black hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ba3638]"
+              >
+                <ChevronLeft className="w-4 h-4 shrink-0 text-gray-400 group-hover:text-black" aria-hidden="true" />
+                <span className="sr-only">Back to all classes: </span>
+                <span className="truncate">
+                  {`${selectedClass.class_name}${selectedClass.semester ? ` · ${selectedClass.semester}` : ''}`}
+                </span>
+              </button>
+            ) : (
+              <span className="text-gray-600 font-medium truncate">My Classes</span>
+            )}
           </div>
 
           <div className="relative flex items-center gap-4" ref={profileRef}>
@@ -95,77 +106,9 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewChange, on
           </div>
         </header>
 
-        {/* Class-level tab nav — only shown when a class is selected */}
+        {/* Class-level tabs (grouped) — only shown when a class is selected */}
         {!isClassSelect && selectedClass && (
-          <nav className="bg-gray-50 border-b border-gray-100 flex justify-start px-4 sm:px-6 lg:px-8 py-2 gap-1 overflow-x-auto">
-            <button
-              type="button"
-              onClick={onBackToClasses}
-              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors text-gray-600 hover:text-black hover:bg-white/70"
-            >
-              Classes
-            </button>
-            <button
-              type="button"
-              onClick={() => onViewChange('ASSIGNMENT_LIST')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                currentView === 'ASSIGNMENT_LIST' || currentView === 'ASSIGNMENT_EDIT' || currentView === 'ASSIGNMENT_VIEW' || currentView === 'ASSIGNMENT_CREATE_SUCCESS'
-                  ? 'bg-white text-black shadow-sm border border-gray-200'
-                  : 'text-gray-600 hover:text-black hover:bg-white/70'
-              }`}
-            >
-              Assignments
-            </button>
-            <button
-              type="button"
-              onClick={() => onViewChange('CLASS_INFO')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                currentView === 'CLASS_INFO'
-                  ? 'bg-white text-black shadow-sm border border-gray-200'
-                  : 'text-gray-600 hover:text-black hover:bg-white/70'
-              }`}
-            >
-              Class Info
-            </button>
-            <button
-              type="button"
-              onClick={() => onViewChange('GRADES')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                currentView === 'GRADES'
-                  ? 'bg-white text-black shadow-sm border border-gray-200'
-                  : 'text-gray-600 hover:text-black hover:bg-white/70'
-              }`}
-            >
-              Grades
-            </button>
-            <button
-              type="button"
-              onClick={() => onViewChange('METRICS')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                currentView === 'METRICS'
-                  ? 'bg-white text-black shadow-sm border border-gray-200'
-                  : 'text-gray-600 hover:text-black hover:bg-white/70'
-              }`}
-            >
-              Metrics
-            </button>
-            {/* Agent panels (components/agents/registry.tsx) */}
-            <span className="mx-2 my-1 w-px bg-gray-300" aria-hidden="true" />
-            {AGENT_TABS.map((tab) => (
-              <button
-                key={tab.view}
-                type="button"
-                onClick={() => onViewChange(tab.view)}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
-                  currentView === tab.view
-                    ? 'bg-white text-black shadow-sm border border-gray-200'
-                    : 'text-gray-600 hover:text-black hover:bg-white/70'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
+          <ClassTabs classId={selectedClass.class_id} currentView={currentView} onViewChange={onViewChange} />
         )}
       </div>
 

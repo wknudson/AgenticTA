@@ -71,7 +71,14 @@ CREATE TABLE assignments (
     allowed_submissions INTEGER NOT NULL DEFAULT 1,
     keep_type       TEXT NOT NULL DEFAULT 'latest',
     attempt_scoring_policy TEXT NOT NULL DEFAULT 'latest',
-    pdf_summary     TEXT
+    pdf_summary     TEXT,
+    -- Flipped classroom (docs/flipped-classroom-plan.md). Existing DBs get these from migrate.ts.
+    mode            TEXT NOT NULL DEFAULT 'graded',      -- graded (legacy) | checkin
+    unit            TEXT,                                -- Library unit a check-in was built from
+    tutor_mode      TEXT NOT NULL DEFAULT 'hints_only',  -- hints_only | answer_after_tries
+    tutor_reveal_after INTEGER NOT NULL DEFAULT 2,       -- honest tries before the tutor may explain
+    mastery_threshold REAL NOT NULL DEFAULT 0.8,         -- share of game items mastered to unlock the check-in
+    lesson_date     TEXT                                 -- the class this check-in prepares for (YYYY-MM-DD)
 );
 
 -- Note: assignment_documents table removed; PDFs are not stored.
@@ -83,7 +90,8 @@ CREATE TABLE assignment_questions (
     question_text TEXT NOT NULL,
     question_type TEXT NOT NULL DEFAULT 'multiple_choice',
     max_points    REAL NOT NULL DEFAULT 1,
-    correct_answer TEXT
+    correct_answer TEXT,
+    explain_rubric TEXT  -- check-ins: the idea a good explanation must contain
 );
 
 CREATE TABLE assignment_question_options (
@@ -102,9 +110,12 @@ CREATE TABLE student_grades (
     submission_date     TEXT,
     graded_date         TEXT,
     understanding_score REAL,
-    ai_dependency_score REAL,
+    ai_dependency_score REAL,             -- legacy graded assignments only
     engagement_score    REAL,
     submission_attempts INTEGER NOT NULL DEFAULT 0,
+    practice_mastery    REAL,             -- check-ins: % of game items mastered
+    first_try_accuracy  REAL,             -- check-ins: % of answered questions right the first time
+    fixed_with_help     REAL,             -- check-ins: % of misses fixed with the tutor
     PRIMARY KEY (student_id, assignment_id)
 );
 
@@ -145,7 +156,8 @@ CREATE TABLE student_chat_messages (
     attempt_number  INTEGER NOT NULL,
     role            TEXT NOT NULL,
     content         TEXT NOT NULL,
-    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    question_id     INTEGER  -- check-ins: the question this tutor chat is about
 );
 
 CREATE TABLE student_metrics (
@@ -156,9 +168,12 @@ CREATE TABLE student_metrics (
     week_end_date       TEXT,
     accuracy_score      REAL,
     understanding_score REAL,
-    ai_dependency_score REAL,
+    ai_dependency_score REAL,             -- legacy graded assignments only
     engagement_score    REAL,
     notes               TEXT,
+    practice_score      REAL,             -- avg practice mastery (check-ins)
+    first_try_accuracy  REAL,             -- avg first-try accuracy (check-ins)
+    fixed_with_help     REAL,             -- avg share of misses fixed with the tutor (check-ins)
     PRIMARY KEY (student_id, class_id, week_number)
 );
 

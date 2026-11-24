@@ -21,6 +21,7 @@ from langgraph.types import Command
 
 from . import approvals
 from .db import connect, now_iso
+from .llm import MissingApiKey
 from .settings import CHECKPOINT_DB_PATH
 from .tracing import agent_trace
 
@@ -84,8 +85,40 @@ class HitlRunner:
                 "SELECT thread_id, class_id FROM approvals WHERE group_id = ? LIMIT 1", (group_id,)
             ).fetchone()
         thread_id, class_id = r["thread_id"], r["class_id"]
-        graph = self._live_graphs.get(thread_id) or self.build_graph()
-        return self._invoke(graph, Command(resume={"decisions": decisions}), thread_id, class_id)
+        graph = None
+        try:
+            graph = self._live_graphs.get(thread_id) or self._rebuild_for_resume()
+            return self._invoke(graph, Command(resume={"decisions": decisions}), thread_id, class_id)
+        except Exception as exc:
+            raise approvals.ResumeFailed(str(exc), still_waiting=self._still_waiting(graph, thread_id)) from exc
+
+    @staticmethod
+    def _still_waiting(graph: Any, thread_id: str) -> bool:
+        """Is the checkpoint still paused at an approval (so the approved action never ran)?"""
+        if graph is None:
+            return True
+        try:
+            snap = graph.get_state({"configurable": {"thread_id": thread_id}})
+            return any(getattr(t, "interrupts", ()) for t in snap.tasks)
+        except Exception:  # can't tell: assume nothing ran, so the teacher can retry
+            return True
+
+    def _rebuild_for_resume(self) -> Any:
+        """The graph that paused is gone (the service restarted). Rebuild it from the checkpoint.
+
+        A run drafted without a model (offline demo, the scheduler's no-AI draft) can still be
+        approved when that agent has no API key: the approved tool call runs from the checkpoint,
+        and only the closing message comes from a one-line scripted model.
+        """
+        try:
+            return self.build_graph()
+        except MissingApiKey:
+            from langchain_core.messages import AIMessage  # noqa: PLC0415
+
+            try:
+                return self.build_graph(script=[AIMessage("Finished.")])
+            except TypeError:  # this agent's graph doesn't take a script
+                raise
 
     def _invoke(self, graph: Any, graph_input: Any, thread_id: str, class_id: int | None) -> dict[str, Any]:
         config = {"configurable": {"thread_id": thread_id}, "run_name": f"{self.agent}",

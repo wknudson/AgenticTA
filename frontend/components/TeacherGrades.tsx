@@ -2,6 +2,19 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { fetchClassGrades, fetchAssignmentQuestions, updateAssignment, type AssignmentGradeSummary, type AssignmentQuestionPreview } from '../services/api';
 import { ChevronDown } from './Icons';
 import AssignmentQuestionsEditorModal from './AssignmentQuestionsEditorModal';
+import { SIGNAL_META, fmtSignal } from './learningSignals';
+
+type StudentGrade = AssignmentGradeSummary['students'][number];
+
+const LEGACY_SIGNAL_NOTE = 'Older graded assignment: no practice or check-in data.';
+
+/** "Fixed with help" is empty on a check-in when the student got everything right the first time. */
+function fmtFixedWithHelp(s: Pick<StudentGrade, 'fixedWithHelp' | 'firstTryAccuracy'>, isCheckin: boolean): string {
+  if (isCheckin && s.fixedWithHelp == null && s.firstTryAccuracy != null && Math.round(s.firstTryAccuracy) >= 100) {
+    return 'Nothing to fix';
+  }
+  return fmtSignal(s.fixedWithHelp);
+}
 
 interface TeacherGradesProps {
   classId: number;
@@ -25,7 +38,8 @@ const TeacherGrades: React.FC<TeacherGradesProps> = ({ classId, teacherId, admin
   const [selectedStudentDetail, setSelectedStudentDetail] = useState<{
     assignmentName: string;
     maxPoints: number;
-    student: AssignmentGradeSummary['students'][number];
+    isCheckin: boolean;
+    student: StudentGrade;
   } | null>(null);
   const [editingAssignment, setEditingAssignment] = useState<AssignmentGradeSummary | null>(null);
   const [editAssignmentName, setEditAssignmentName] = useState('');
@@ -119,10 +133,10 @@ const TeacherGrades: React.FC<TeacherGradesProps> = ({ classId, teacherId, admin
   };
 
   const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '--';
+    if (!dateStr) return '—';
     return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
-  const fmtPercent = (value: number | null | undefined) => (value == null ? '--' : `${Math.round(value)}%`);
+  const fmtPercent = fmtSignal;
   const toDateTimeLocal = (dateStr: string | null): string => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
@@ -256,8 +270,13 @@ const TeacherGrades: React.FC<TeacherGradesProps> = ({ classId, teacherId, admin
         <div className="space-y-3">
           {paginatedAssignments.map((a) => {
             const isOpen = openIds.has(a.assignmentId);
-            const submittedCount = a.students.filter((s) => s.submitted).length;
+            const isCheckin = a.mode === 'checkin';
+            // Check-ins are graded on completion; a grade row exists once the student starts.
+            const submittedCount = isCheckin
+              ? a.students.filter((s) => s.letterGrade === 'Complete').length
+              : a.students.filter((s) => s.submitted).length;
             const totalStudents = a.students.length;
+            const legacyTitle = isCheckin ? undefined : LEGACY_SIGNAL_NOTE;
 
             return (
               <div
@@ -271,11 +290,18 @@ const TeacherGrades: React.FC<TeacherGradesProps> = ({ classId, teacherId, admin
                   className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition-colors"
                 >
                   <div className="min-w-0">
-                    <p className="font-semibold text-black truncate">{a.assignmentName}</p>
+                    <p className="font-semibold text-black truncate">
+                      {a.assignmentName}
+                      {isCheckin && (
+                        <span className="ml-2 align-middle inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-violet-50 text-violet-700">
+                          Check-in
+                        </span>
+                      )}
+                    </p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {a.type || 'Assignment'} &middot; {a.maxPoints} pts
+                      {isCheckin ? (a.unit ? `Unit: ${a.unit}` : 'Check-in') : a.type || 'Assignment'} &middot; {a.maxPoints} pts
                       {a.dueDate && <> &middot; Due: {formatDate(a.dueDate)}</>}
-                      {' '}&middot; {submittedCount}/{totalStudents} submitted
+                      {' '}&middot; {submittedCount}/{totalStudents} {isCheckin ? 'complete' : 'submitted'}
                     </p>
                   </div>
                   <ChevronDown
@@ -290,14 +316,20 @@ const TeacherGrades: React.FC<TeacherGradesProps> = ({ classId, teacherId, admin
                       <p className="text-gray-400 text-sm italic py-3">No students enrolled.</p>
                     ) : (
                       <>
+                        <div className="overflow-x-auto -mx-1 px-1">
                         <table className="w-full text-sm mt-2">
                           <thead>
                             <tr className="text-left text-gray-500 border-b border-gray-100">
                               <th className="py-2 pr-4 font-medium">Student</th>
-                              <th className="py-2 pr-4 font-medium">Submitted</th>
+                              <th className="py-2 pr-4 font-medium">{isCheckin ? 'Started' : 'Submitted'}</th>
                               <th className="py-2 pr-4 font-medium">Grade</th>
-                              <th className="py-2 pr-4 font-medium">Score</th>
-                              <th className="py-2 font-medium">Submitted On</th>
+                              <th className="py-2 pr-4 font-medium">{isCheckin ? 'Completion' : 'Score'}</th>
+                              {isCheckin && (
+                                <th className="py-2 pr-4 font-medium whitespace-nowrap" title={SIGNAL_META.firstTryAccuracy.help}>
+                                  First try
+                                </th>
+                              )}
+                              <th className="py-2 font-medium whitespace-nowrap">{isCheckin ? 'Last activity' : 'Submitted On'}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -305,9 +337,16 @@ const TeacherGrades: React.FC<TeacherGradesProps> = ({ classId, teacherId, admin
                               <tr
                                 key={s.studentId}
                                 className="border-b border-gray-50 last:border-0 hover:bg-gray-50 cursor-pointer"
-                                onClick={() => setSelectedStudentDetail({ assignmentName: a.assignmentName, maxPoints: a.maxPoints, student: s })}
+                                onClick={() =>
+                                  setSelectedStudentDetail({
+                                    assignmentName: a.assignmentName,
+                                    maxPoints: a.maxPoints,
+                                    isCheckin,
+                                    student: s,
+                                  })
+                                }
                               >
-                                <td className="py-2.5 pr-4 text-gray-900">
+                                <td className="py-2.5 pr-4 text-gray-900 whitespace-nowrap">
                                   {s.lastName}, {s.firstName}
                                 </td>
                                 <td className="py-2.5 pr-4">
@@ -322,29 +361,45 @@ const TeacherGrades: React.FC<TeacherGradesProps> = ({ classId, teacherId, admin
                                   )}
                                 </td>
                                 <td className="py-2.5 pr-4 text-gray-900 font-medium">
-                                  {s.letterGrade ?? '--'}
+                                  {s.letterGrade ?? '—'}
                                 </td>
-                                <td className="py-2.5 pr-4 text-gray-700">
+                                <td className="py-2.5 pr-4 text-gray-700 whitespace-nowrap">
                                   {s.pointsEarned != null
-                                    ? `${s.pointsEarned}/${a.maxPoints} (${Math.round(s.percentage ?? 0)}%)`
-                                    : '--'}
+                                    ? `${s.pointsEarned}/${a.maxPoints} (${fmtPercent(s.percentage)})`
+                                    : '—'}
                                 </td>
-                                <td className="py-2.5 text-gray-500">
+                                {isCheckin && (
+                                  <td className="py-2.5 pr-4 text-gray-700">{fmtSignal(s.firstTryAccuracy)}</td>
+                                )}
+                                <td className="py-2.5 text-gray-500 whitespace-nowrap">
                                   {formatDate(s.submissionDate)}
                                 </td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
+                        </div>
                         <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-medium">
-                            Avg Accuracy: {fmtPercent(a.averages?.accuracy)}
+                          <span className="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-700 font-medium">
+                            {isCheckin ? 'Avg completion' : 'Avg score'}: {fmtPercent(a.averages?.accuracy)}
                           </span>
-                          <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-50 text-green-700 font-medium">
-                            Avg Understanding: {fmtPercent(a.averages?.understanding)}
-                          </span>
-                          <span className="inline-flex items-center px-2 py-1 rounded-full bg-red-50 text-red-700 font-medium">
-                            Avg AI Dependency: {fmtPercent(a.averages?.aiDependency)}
+                          {(['practiceMastery', 'firstTryAccuracy', 'fixedWithHelp'] as const).map((field) => {
+                            const meta = SIGNAL_META[field === 'practiceMastery' ? 'practice' : field];
+                            return (
+                              <span
+                                key={field}
+                                title={legacyTitle ?? meta.help}
+                                className={`inline-flex items-center px-2 py-1 rounded-full font-medium ${meta.badge}`}
+                              >
+                                {meta.label}: {fmtPercent(a.averages?.[field])}
+                              </span>
+                            );
+                          })}
+                          <span
+                            title={SIGNAL_META.understanding.help}
+                            className={`inline-flex items-center px-2 py-1 rounded-full font-medium ${SIGNAL_META.understanding.badge}`}
+                          >
+                            Understanding: {fmtPercent(a.averages?.understanding)}
                           </span>
                           {!readOnly && (
                             <button
@@ -418,34 +473,66 @@ const TeacherGrades: React.FC<TeacherGradesProps> = ({ classId, teacherId, admin
             </div>
 
             {!selectedStudentDetail.student.submitted ? (
-              <p className="text-sm text-gray-600">This student has not submitted this assignment yet.</p>
+              <p className="text-sm text-gray-600">
+                {selectedStudentDetail.isCheckin
+                  ? 'This student has not started the check-in yet.'
+                  : 'This student has not submitted this assignment yet.'}
+              </p>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
-                  <p className="text-gray-500">Grade</p>
-                  <p className="font-semibold text-black">{selectedStudentDetail.student.letterGrade ?? '--'}</p>
-                </div>
-                <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
-                  <p className="text-gray-500">Accuracy</p>
-                  <p className="font-semibold text-black">
-                    {selectedStudentDetail.student.pointsEarned != null
-                      ? `${selectedStudentDetail.student.pointsEarned}/${selectedStudentDetail.maxPoints} (${fmtPercent(selectedStudentDetail.student.percentage)})`
-                      : '--'}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
-                  <p className="text-gray-500">Understanding</p>
-                  <p className="font-semibold text-black">{fmtPercent(selectedStudentDetail.student.understandingScore)}</p>
-                </div>
-                <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
-                  <p className="text-gray-500">AI Dependency</p>
-                  <p className="font-semibold text-black">{fmtPercent(selectedStudentDetail.student.aiDependencyScore)}</p>
-                </div>
-                <div className="rounded-xl bg-gray-50 border border-gray-100 p-3 sm:col-span-2">
-                  <p className="text-gray-500">Submitted On</p>
-                  <p className="font-semibold text-black">{formatDate(selectedStudentDetail.student.submissionDate)}</p>
-                </div>
-              </div>
+              (() => {
+                const { student, isCheckin, maxPoints } = selectedStudentDetail;
+                const signalCards: Array<{ label: string; help: string; value: string }> = [
+                  { label: SIGNAL_META.practice.label, help: SIGNAL_META.practice.help, value: fmtSignal(student.practiceMastery) },
+                  {
+                    label: SIGNAL_META.firstTryAccuracy.label,
+                    help: SIGNAL_META.firstTryAccuracy.help,
+                    value: fmtSignal(student.firstTryAccuracy),
+                  },
+                  {
+                    label: SIGNAL_META.fixedWithHelp.label,
+                    help: SIGNAL_META.fixedWithHelp.help,
+                    value: fmtFixedWithHelp(student, isCheckin),
+                  },
+                  {
+                    label: SIGNAL_META.understanding.label,
+                    help: SIGNAL_META.understanding.help,
+                    value: fmtSignal(student.understandingScore),
+                  },
+                ];
+                return (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                      <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
+                        <p className="text-gray-500">Grade</p>
+                        <p className="font-semibold text-black">{student.letterGrade ?? '—'}</p>
+                      </div>
+                      <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
+                        <p className="text-gray-500">{isCheckin ? 'Completion' : 'Score'}</p>
+                        <p className="font-semibold text-black">
+                          {student.pointsEarned != null
+                            ? `${student.pointsEarned}/${maxPoints} (${fmtPercent(student.percentage)})`
+                            : '—'}
+                        </p>
+                      </div>
+                      {signalCards.map((card) => (
+                        <div key={card.label} className="rounded-xl bg-gray-50 border border-gray-100 p-3" title={card.help}>
+                          <p className="text-gray-500">{card.label}</p>
+                          <p className="font-semibold text-black">{card.value}</p>
+                        </div>
+                      ))}
+                      <div className="rounded-xl bg-gray-50 border border-gray-100 p-3 sm:col-span-2">
+                        <p className="text-gray-500">{isCheckin ? 'Last activity' : 'Submitted On'}</p>
+                        <p className="font-semibold text-black">{formatDate(student.submissionDate)}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {isCheckin
+                        ? 'The grade is completion: every question answered and every miss fixed with the tutor. Getting questions wrong never lowers it.'
+                        : LEGACY_SIGNAL_NOTE}
+                    </p>
+                  </div>
+                );
+              })()
             )}
           </div>
         </div>

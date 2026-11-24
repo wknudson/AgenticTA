@@ -2,11 +2,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 import AgentPanelShell from './AgentPanelShell';
 import { agentsFetch, RunResult } from '../../services/agentsApi';
 import type { AgentPanelProps } from './registry';
+import BriefingPanel from '../checkin/BriefingPanel';
 
 type Suggestion = { explanation: string; material_update: string; reteaching_activity: string; supporting_student_count?: number };
 type Insight = { insight_id: number; topic: string; evidence_count: number; examples: string[]; suggestion: Suggestion; model_used: string; status: string };
 type Analysis = { chats_read: number; questions_analyzed: number; insights_found: number; insights_suppressed: number; latency_seconds: number };
-type Assignment = { assignment_id: number; assignment_name: string; due_date: string | null; analysis_status: 'eligible' | 'upcoming' | 'no_due_date' };
+type Assignment = { assignment_id: number; assignment_name: string; due_date: string | null; mode?: string; analysis_status: 'eligible' | 'upcoming' | 'no_due_date' };
 type AnalysisScope = 'course' | 'assignment';
 const InsightsPanel: React.FC<AgentPanelProps> = ({ classId }) => {
   const [insights, setInsights] = useState<Insight[]>([]);
@@ -44,7 +45,7 @@ const InsightsPanel: React.FC<AgentPanelProps> = ({ classId }) => {
       const assignmentQuery = scope === 'assignment' ? `&assignment_id=${assignmentId}` : '';
       const result = await agentsFetch<Analysis>(`/misconceptions/run?class_id=${classId}${assignmentQuery}`, { method: 'POST' });
       const heldBack = result.insights_suppressed ? ` Held back ${result.insights_suppressed} pattern(s) with fewer than 3 questions or fewer than 2 students; gather more chats and analyze again.` : '';
-      const scopeLabel = scope === 'course' ? 'across the course' : 'for this assignment after its due date';
+      const scopeLabel = scope === 'course' ? 'across the course' : 'for this assignment';
       setNotice(`Analyzed ${result.questions_analyzed} of ${result.chats_read} recent chats ${scopeLabel}; found ${result.insights_found} supported recommendation(s) in ${result.latency_seconds}s.${heldBack}`);
       await load();
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
@@ -63,6 +64,8 @@ const InsightsPanel: React.FC<AgentPanelProps> = ({ classId }) => {
     finally { setBusy(false); }
   };
   return (
+    <>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-6"><BriefingPanel classId={classId} onInsightsChanged={refresh} /></div>
     <AgentPanelShell agent="misconceptions" classId={classId} onRunComplete={refresh}
       demoQuery={scope === 'assignment' && assignmentId ? `&assignment_id=${assignmentId}` : ''}
       demoDisabled={loading || (scope === 'assignment' && (!assignmentId || assignments.find(a => String(a.assignment_id) === assignmentId)?.analysis_status !== 'eligible'))}>
@@ -72,7 +75,7 @@ const InsightsPanel: React.FC<AgentPanelProps> = ({ classId }) => {
         <label className="block text-sm font-medium">Analyze
           <select className="mt-1 block w-full rounded-lg border p-2" value={scope} onChange={event => setScope(event.target.value as AnalysisScope)} disabled={busy || loading}>
             <option value="course">All course chats (run manually)</option>
-            <option value="assignment">One assignment (after its due date)</option>
+            <option value="assignment">One assignment (after its due date; check-ins any time)</option>
           </select>
         </label>
         {scope === 'assignment' && <>
@@ -80,11 +83,11 @@ const InsightsPanel: React.FC<AgentPanelProps> = ({ classId }) => {
             <select className="mt-1 block w-full rounded-lg border p-2" value={assignmentId} onChange={event => setAssignmentId(event.target.value)} disabled={busy || loading}>
               <option value="">Choose an assignment</option>
               {assignments.map(assignment => <option key={assignment.assignment_id} value={assignment.assignment_id}>
-                {assignment.assignment_name} — {assignment.analysis_status === 'eligible' ? 'due date passed' : assignment.analysis_status === 'upcoming' ? `due ${assignment.due_date ? new Date(assignment.due_date).toLocaleString() : 'date pending'}` : 'no due date'}
+                {assignment.assignment_name} — {assignment.mode === 'checkin' ? 'check-in, open now' : assignment.analysis_status === 'eligible' ? 'due date passed' : assignment.analysis_status === 'upcoming' ? `due ${assignment.due_date ? new Date(assignment.due_date).toLocaleString() : 'date pending'}` : 'no due date'}
               </option>)}
             </select>
           </label>
-          <p className="text-xs text-gray-500">Assignment-specific analysis becomes available after the selected due date.</p>
+          <p className="text-xs text-gray-500">Assignment-specific analysis becomes available after the selected due date. Check-ins can be analyzed before it, so the briefing is ready before class.</p>
         </>}
         <button className="bg-black text-white rounded-lg px-4 py-2 disabled:opacity-40" onClick={analyze} disabled={busy || loading || (scope === 'assignment' && (!assignmentId || assignments.find(a => String(a.assignment_id) === assignmentId)?.analysis_status !== 'eligible'))}>{busy ? 'Working…' : 'Analyze chats locally'}</button>
         <p className="text-sm text-gray-600">Approving a recommendation below sends its topic and proposed teaching changes to the materials agent. It drafts a revision for a second approval; no file is changed by the first approval.</p>
@@ -109,6 +112,7 @@ const InsightsPanel: React.FC<AgentPanelProps> = ({ classId }) => {
         </article>
       ))}
     </AgentPanelShell>
+    </>
   );
 };
 export default InsightsPanel;

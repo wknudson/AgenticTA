@@ -19,6 +19,9 @@ import AdminAddTeacher from './components/AdminAddTeacher';
 import Home from './components/Home';
 import Contact from './components/Contact';
 import { findAgentTab } from './components/agents/registry';
+import UnitCheckinEditor from './components/checkin/UnitCheckinEditor';
+import CheckinRowList from './components/CheckinRowList';
+import { rememberBriefingCheckin } from './components/checkin/format';
 import { ViewState, UserSession, Assignment, ClassSummary, UserRole } from './types';
 import { BookOpen, Trash2 } from './components/Icons';
 import { fetchClassAssignments, fetchAssignmentQuestions, deleteAssignment, updateAssignment, type AssignmentQuestionPreview } from './services/api';
@@ -73,6 +76,9 @@ function mapApiAssignmentToAssignment(row: {
   ai_params?: string | null;
   allowed_submissions?: number;
   attempt_scoring_policy?: 'latest' | 'highest' | 'average' | string | null;
+  mode?: string | null;
+  unit?: string | null;
+  lesson_date?: string | null;
 }): Assignment {
   const typeStr = (row.type || 'homework').toLowerCase();
   const typeMap: Record<string, string> = {
@@ -102,6 +108,9 @@ function mapApiAssignmentToAssignment(row: {
       row.attempt_scoring_policy === 'highest' || row.attempt_scoring_policy === 'average'
         ? row.attempt_scoring_policy
         : 'latest',
+    mode: row.mode === 'checkin' ? 'checkin' : 'graded',
+    unit: row.unit ?? null,
+    lessonDate: row.lesson_date ?? null,
   };
 }
 
@@ -167,6 +176,8 @@ const App: React.FC = () => {
   const [createdClassId, setCreatedClassId] = useState<number | null>(null);
   const [createdAssignmentId, setCreatedAssignmentId] = useState<number | null>(null);
   const [newAssignmentTypeDb, setNewAssignmentTypeDb] = useState<string>('homework');
+  /** Library unit to preselect in "New unit check-in" (set by the Library's "Make a check-in" button). */
+  const [checkinUnit, setCheckinUnit] = useState<string | null>(null);
   const isRestoringFromHistory = useRef(false);
 
   const refetchClassAssignments = useCallback(() => {
@@ -191,6 +202,22 @@ const App: React.FC = () => {
       });
     return () => { cancelled = true; };
   }, [selectedClass?.class_id]);
+
+  // Coming back to the Assignments list (e.g. after approving a check-in in Approvals): reload it,
+  // so newly published check-ins show up. Errors keep the list as it was.
+  useEffect(() => {
+    if (view !== 'ASSIGNMENT_LIST' || !selectedClass) return;
+    let cancelled = false;
+    fetchClassAssignments(selectedClass.class_id)
+      .then((rows) => { if (!cancelled) setClassAssignments(rows.map(mapApiAssignmentToAssignment)); })
+      .catch(() => { /* keep the current list */ });
+    return () => { cancelled = true; };
+  }, [view, selectedClass?.class_id]);
+
+  const openBriefing = (classId: number, assignmentId: number) => {
+    rememberBriefingCheckin(classId, assignmentId);
+    setView('AGENT_INSIGHTS');
+  };
 
   // Sync app state with browser history so back/forward work in-app
   useEffect(() => {
@@ -344,12 +371,108 @@ const App: React.FC = () => {
     }
   };
 
-  const renderAssignmentList = () => (
+  /** A graded assignment's row (check-ins use CheckinRowList). */
+  const renderAssignmentRow = (a: Assignment) => (
+    <div
+      key={a.id}
+      className="flex items-center justify-between bg-white border border-gray-100 rounded-2xl px-5 py-4 shadow-sm hover:shadow-md transition-all group"
+    >
+      <button
+        type="button"
+        onClick={() => {
+          setSelectedAssignment(a);
+          setView('ASSIGNMENT_VIEW');
+        }}
+        className="flex items-center gap-3 flex-1 min-w-0 text-left"
+      >
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all bg-[#ba3638]/10 text-[#ba3638] group-hover:bg-[#ba3638] group-hover:text-white">
+          <BookOpen className="w-4 h-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-semibold text-black transition-colors truncate group-hover:text-[#ba3638]">
+            {a.title}
+          </p>
+          {a.dueDate && (
+            <p className="text-xs text-gray-500 mt-0.5">Due: {a.dueDate}</p>
+          )}
+        </div>
+      </button>
+      {selectedClass && (
+        <CopyStudentLinkButton classId={selectedClass.class_id} assignmentId={a.id} />
+      )}
+      <button
+        type="button"
+        onClick={() => handleDeleteAssignmentClick(a)}
+        className="ml-2 p-2 text-gray-300 hover:text-red-500 transition-colors shrink-0"
+        title="Delete assignment"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
+  );
+
+  /** Buttons on a check-in row (CheckinRowList stacks them under the title on phones). */
+  const renderCheckinActions = (a: Assignment) =>
+    selectedClass ? (
+      <>
+        <button
+          type="button"
+          onClick={() => openBriefing(selectedClass.class_id, Number(a.id))}
+          className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 shrink-0"
+          title="Open the before-class briefing"
+        >
+          Briefing
+        </button>
+        <CopyStudentLinkButton classId={selectedClass.class_id} assignmentId={a.id} />
+        <button
+          type="button"
+          onClick={() => handleDeleteAssignmentClick(a)}
+          className="p-2 text-gray-300 hover:text-red-500 transition-colors shrink-0"
+          title="Delete assignment"
+          aria-label={`Delete ${a.title}`}
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </>
+    ) : null;
+
+  const renderAssignmentList = () => {
+    const checkins = classAssignments.filter((a) => a.mode === 'checkin');
+    return (
     <div className="space-y-10 animate-fadeIn">
       <h2 className="text-4xl font-bold text-black">Assignments</h2>
 
+      {/* Unit check-ins: games + check-in built from a Library unit (docs/flipped-classroom-plan.md) */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-2">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-700">Unit check-ins</h3>
+            <p className="text-xs text-gray-500">Practice games, then a check-in with the tutor. Built from a Library unit.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => { setCheckinUnit(null); setView('CHECKIN_NEW'); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors"
+          >
+            <span className="text-base leading-none">+</span> New unit check-in
+          </button>
+        </div>
+        {selectedClass && (
+          <CheckinRowList
+            classId={selectedClass.class_id}
+            checkins={checkins}
+            onOpen={(a) => {
+              setSelectedAssignment(a);
+              setView('ASSIGNMENT_VIEW');
+            }}
+            onOpenApprovals={() => setView('AGENT_APPROVALS')}
+            renderActions={renderCheckinActions}
+          />
+        )}
+      </div>
+
       {ASSIGNMENT_CATEGORIES.map(({ label, types, createTypeDb }) => {
-        const items = classAssignments.filter((a) => types.includes(a.type));
+        const items = classAssignments.filter((a) => a.mode !== 'checkin' && types.includes(a.type));
         return (
           <div key={label} className="space-y-3">
             {/* Category header */}
@@ -372,51 +495,15 @@ const App: React.FC = () => {
               <p className="text-gray-400 text-sm italic px-1">No {label.toLowerCase()} yet.</p>
             ) : (
               <div className="space-y-2">
-                {items.map((a) => (
-                  <div
-                    key={a.id}
-                    className="flex items-center justify-between bg-white border border-gray-100 rounded-2xl px-5 py-4 shadow-sm hover:shadow-md transition-all group"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedAssignment(a);
-                        setView('ASSIGNMENT_VIEW');
-                      }}
-                      className="flex items-center gap-3 flex-1 min-w-0 text-left"
-                    >
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all bg-[#ba3638]/10 text-[#ba3638] group-hover:bg-[#ba3638] group-hover:text-white">
-                        <BookOpen className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-black transition-colors truncate group-hover:text-[#ba3638]">
-                          {a.title}
-                        </p>
-                        {a.dueDate && (
-                          <p className="text-xs text-gray-500 mt-0.5">Due: {a.dueDate}</p>
-                        )}
-                      </div>
-                    </button>
-                    {selectedClass && (
-                      <CopyStudentLinkButton classId={selectedClass.class_id} assignmentId={a.id} />
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteAssignmentClick(a)}
-                      className="ml-2 p-2 text-gray-300 hover:text-red-500 transition-colors shrink-0"
-                      title="Delete assignment"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+                {items.map(renderAssignmentRow)}
               </div>
             )}
           </div>
         );
       })}
     </div>
-  );
+    );
+  };
 
   if (window.location.pathname === '/student/login') {
     return <StudentLogin />;
@@ -485,7 +572,12 @@ const App: React.FC = () => {
       case 'GRADES':
         return selectedClass ? <TeacherGrades classId={selectedClass.class_id} teacherId={session.userId ?? 0} /> : null;
       case 'METRICS':
-        return selectedClass ? <TeacherMetrics classId={selectedClass.class_id} /> : null;
+        return selectedClass ? (
+          <TeacherMetrics
+            classId={selectedClass.class_id}
+            onOpenCheckin={(assignmentId) => openBriefing(selectedClass.class_id, assignmentId)}
+          />
+        ) : null;
       case 'CLASS_INFO':
         return selectedClass ? (
           <ClassInfo
@@ -516,6 +608,31 @@ const App: React.FC = () => {
             }}
           />
         );
+      case 'CHECKIN_NEW':
+        return selectedClass ? (
+          <UnitCheckinEditor
+            classId={selectedClass.class_id}
+            initialUnit={checkinUnit ?? undefined}
+            onCancel={() => { refetchClassAssignments(); setView('ASSIGNMENT_LIST'); }}
+            onOpenApprovals={() => setView('AGENT_APPROVALS')}
+            onViewCheckin={(assignmentId) => {
+              // Just approved in place: open the new check-in's page.
+              fetchClassAssignments(selectedClass.class_id)
+                .then((rows) => {
+                  const mapped = rows.map(mapApiAssignmentToAssignment);
+                  setClassAssignments(mapped);
+                  const created = mapped.find((a) => Number(a.id) === assignmentId);
+                  if (created) {
+                    setSelectedAssignment(created);
+                    setView('ASSIGNMENT_VIEW');
+                  } else {
+                    setView('ASSIGNMENT_LIST');
+                  }
+                })
+                .catch(() => { refetchClassAssignments(); setView('ASSIGNMENT_LIST'); });
+            }}
+          />
+        ) : null;
       case 'ASSIGNMENT_VIEW':
         return selectedAssignment && selectedClass
           ? (
@@ -523,6 +640,19 @@ const App: React.FC = () => {
               assignment={selectedAssignment}
               classId={selectedClass.class_id}
               onViewAsStudent={() => setView('VIEW_AS_STUDENT')}
+              onOpenBriefing={() => openBriefing(selectedClass.class_id, Number(selectedAssignment.id))}
+              onCheckinSettingsSaved={() => {
+                // Title and dates may have changed: refresh the list and this page's copy.
+                const id = String(selectedAssignment.id);
+                fetchClassAssignments(selectedClass.class_id)
+                  .then((rows) => {
+                    const mapped = rows.map(mapApiAssignmentToAssignment);
+                    setClassAssignments(mapped);
+                    const fresh = mapped.find((a) => String(a.id) === id);
+                    if (fresh) setSelectedAssignment(fresh);
+                  })
+                  .catch(() => refetchClassAssignments());
+              }}
               onSaveAssignment={async (updates) => {
                 if (!session.userId) return { success: false, error: 'Missing teacher session' };
                 const res = await updateAssignment(
@@ -603,7 +733,16 @@ const App: React.FC = () => {
         const agentTab = findAgentTab(view);
         if (agentTab && selectedClass) {
           const Panel = agentTab.component;
-          return <Panel classId={selectedClass.class_id} teacherId={session.userId ?? 0} />;
+          return (
+            <Panel
+              classId={selectedClass.class_id}
+              teacherId={session.userId ?? 0}
+              onStartCheckin={(unit) => {
+                setCheckinUnit(unit);
+                setView('CHECKIN_NEW');
+              }}
+            />
+          );
         }
         return null;
       }

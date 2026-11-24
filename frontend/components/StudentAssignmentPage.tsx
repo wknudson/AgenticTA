@@ -6,7 +6,9 @@ import {
   type StudentAssignmentPayload,
 } from '../services/api';
 import { chatWithTutor } from '../services/aiService';
+import { isCheckinAssignment } from '../services/checkinApi';
 import StudentCalendar from './agents/StudentCalendar';
+import CheckinFlow from './student/checkin/CheckinFlow';
 
 const STUDENT_SESSION_KEY = 'lyrning_student_session';
 
@@ -86,8 +88,10 @@ const StudentAssignmentPage: React.FC<StudentAssignmentPageProps> = ({ classId, 
     }
     if (payload.questions.length > 0) {
       const questionsText = payload.questions.map((q) => {
-        const optionsStr = q.options.map((o) => `  - ${o.optionText}`).join('\n');
-        return `Q${q.sortOrder}: ${q.questionText}\n${optionsStr}`;
+        // Short-answer questions arrive without options (Express never sends the model answer).
+        const options = q.questionType === 'short_answer' ? [] : (q.options ?? []);
+        const optionsStr = options.map((o) => `  - ${o.optionText}`).join('\n');
+        return optionsStr ? `Q${q.sortOrder}: ${q.questionText}\n${optionsStr}` : `Q${q.sortOrder}: ${q.questionText}`;
       }).join('\n\n');
       parts.push(`Assignment Questions:\n${questionsText}`);
     }
@@ -176,6 +180,31 @@ const StudentAssignmentPage: React.FC<StudentAssignmentPageProps> = ({ classId, 
         <div className="max-w-lg w-full bg-white border border-gray-200 rounded-2xl p-6 text-center">
           <h1 className="text-xl font-bold text-gray-900 mb-2">Unable to open assignment</h1>
           <p className="text-gray-600">{error || 'No assignment data returned.'}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Flipped-classroom check-in: practice games, then the check-in with the tutor (agents service).
+  if (isCheckinAssignment(payload.assignment)) {
+    return (
+      <div className="min-h-screen bg-gray-50 px-4 py-8">
+        <div className="sticky top-0 z-40 bg-gray-50 py-2 mb-4">
+          <div className="max-w-6xl mx-auto bg-white border border-gray-200 rounded-2xl px-4 sm:px-6 lg:px-8 py-2">
+            <div className="py-2"><Logo size="sm" /></div>
+          </div>
+        </div>
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+          <main className="min-w-0">
+            <CheckinFlow
+              assignment={payload.assignment}
+              token={session?.token ?? ''}
+              loginHref={`/student/login?class=${classId}&assignment=${assignmentId}`}
+            />
+          </main>
+          <aside className="min-w-0 h-fit">
+            <StudentCalendar classId={classId} />
+          </aside>
         </div>
       </div>
     );
@@ -347,9 +376,6 @@ const StudentAssignmentPage: React.FC<StudentAssignmentPageProps> = ({ classId, 
               <p className="text-green-700">Letter Grade: {payload.grade.letterGrade ?? 'N/A'}</p>
               {payload.grade.understandingScore != null && (
                 <p className="text-green-700">Understanding: {payload.grade.understandingScore}%</p>
-              )}
-              {payload.grade.aiDependencyScore != null && (
-                <p className="text-green-700">AI Dependency: {payload.grade.aiDependencyScore}%</p>
               )}
               {payload.grade.engagementScore != null && (
                 <p className="text-green-700">Engagement: {payload.grade.engagementScore}%</p>
