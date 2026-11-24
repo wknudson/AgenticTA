@@ -38,6 +38,20 @@
   - `PublishPreview` shows the events behind a `publish_calendar` approval, instead of bare ids.
 - **Tests:** `agents/tests/test_scheduler_calendar.py`.
 
+## Month calendar feed and check-in suggestions (no AI, `feed.py`)
+- **Feed:** `GET /agents/scheduler/feed?class_id=1[&start=YYYY-MM-DD&end=YYYY-MM-DD]` returns everything the month view shows that overlaps the range (default: the term, else today-30 to today+120; 422 if `end` is before `start`).
+  - `term`: same as `GET /term`.
+  - `events`: published and proposed calendar events. Rows tied to a check-in are left out, because `checkins` covers them.
+  - `checkins`: each check-in with `due_day` (its calendar entry's day, else the UTC day of `due_date`) and `open_day` (the day its `publish_unit_package` approval was approved; else the lesson day minus 7 days; never after `due_day`). Also `status` (`live`, `due_soon` or `closed`), stage `counts` for active students, and `calendar_event_id`. The status and count rules are copied from the misconceptions briefing, so keep the two in step.
+  - `drafts`: unit packages still waiting for approval, with their lesson day and due day.
+  - `assignments`: graded (non check-in) assignments with a due date in the range.
+- **Check-in suggestions:** `GET /agents/scheduler/checkin-suggestions?class_id=1` suggests one check-in per filed Library unit.
+  - **Anchor:** the unit's next quiz or test after today. Assessment events on the calendar are checked first, then dated labels in the Library ("Unit 3 quiz"). The match uses the unit's number, so Unit 3 doesn't match "Unit 30".
+  - **Lesson day:** the 2nd school day before the anchor (a weekday inside the term, and not a holiday), as long as it's still after today. Otherwise it's the 1st school day before.
+  - **Due day:** the day before the lesson.
+  - **Skipped units:** a unit is skipped, with the reason, if it already has a check-in that isn't closed, has a draft package, has no upcoming quiz or test, or the anchor is too soon. Nothing is saved.
+- **Tests:** `agents/tests/test_scheduler_feed.py`.
+
 ## Remaining verification
 - [ ] Verify date extraction against a seeded syllabus and a planted conflict in the project demo data.
 - [ ] Run the scheduler approval and calendar checks in `agents/tests/test_merrick_agents.py` when ready to verify.

@@ -12,6 +12,10 @@ interface Props {
   term: Term | null;
   problems: string[];
   onChanged: () => Promise<void> | void;
+  /** false when the parent already shows the date, the day off and the conflicts (default true). */
+  showHeader?: boolean;
+  /** Shown when the day has no events (default "Nothing scheduled."). */
+  emptyText?: string;
 }
 
 const input = 'border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm w-full';
@@ -65,7 +69,7 @@ const EventRow: React.FC<{ classId: number; event: CalendarEvent; onChanged: Pro
   );
 };
 
-const DayEditor: React.FC<Props> = ({ classId, date, events, term, problems, onChanged }) => {
+const DayEditor: React.FC<Props> = ({ classId, date, events, term, problems, onChanged, showHeader = true, emptyText = 'Nothing scheduled.' }) => {
   const [title, setTitle] = useState('');
   const [kind, setKind] = useState('assessment');
   const [error, setError] = useState('');
@@ -85,14 +89,16 @@ const DayEditor: React.FC<Props> = ({ classId, date, events, term, problems, onC
 
   return (
     <div className="space-y-3">
-      <div>
-        <h3 className="font-semibold text-gray-900">{longDate(date)}</h3>
-        {holiday && <p className="text-sm text-amber-800">No school: {holiday.label}</p>}
-        {problems.map((p) => <p key={p} className="text-sm text-red-700">Conflict: {p}</p>)}
-      </div>
+      {showHeader && (
+        <div>
+          <h3 className="font-semibold text-gray-900">{longDate(date)}</h3>
+          {holiday && <p className="text-sm text-amber-800">No school: {holiday.label}</p>}
+          {problems.map((p) => <p key={p} className="text-sm text-red-700">Conflict: {p}</p>)}
+        </div>
+      )}
       {events.length > 0
         ? <ul className="space-y-2">{events.map((e) => <EventRow key={e.event_id} classId={classId} event={e} onChanged={onChanged} />)}</ul>
-        : <p className="text-sm text-gray-500">Nothing scheduled.</p>}
+        : <p className="text-sm text-gray-500">{emptyText}</p>}
       <form onSubmit={add} className="rounded-xl bg-gray-50 border border-gray-200 p-3 space-y-2">
         <p className="text-sm font-medium text-gray-900">Add to this day</p>
         <input className={input} aria-label="New event title" placeholder="e.g. Unit 3 quiz" required maxLength={200}

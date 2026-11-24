@@ -13,8 +13,16 @@ import SchedulerPanel from './SchedulerPanel';
 export interface AgentPanelProps {
   classId: number;
   teacherId: number;
-  /** Navigation: open "New unit check-in" with this Library unit preselected (App.tsx wires it). */
-  onStartCheckin?: (unit: string) => void;
+  /**
+   * Navigation: open "New unit check-in" with this Library unit preselected (null = no preference)
+   * and, optionally, this lesson day (YYYY-MM-DD). App.tsx wires these.
+   */
+  onStartCheckin?: (unit: string | null, lessonDate?: string) => void;
+  /** Open a published check-in's page (Assignments > the check-in). */
+  onOpenCheckin?: (assignmentId: number) => void;
+  /** Open the before-class briefing on this check-in. */
+  onOpenBriefing?: (assignmentId: number) => void;
+  onOpenApprovals?: () => void;
 }
 
 /** Which class tab group a panel sits under (components/ClassTabs.tsx). */

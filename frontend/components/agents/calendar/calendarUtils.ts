@@ -93,6 +93,17 @@ export const isWeekend = (iso: string) => {
   return day === 0 || day === 6;
 };
 
+/** Why nothing can be scheduled on a day (weekend, outside the term, holiday), or null for a school day. */
+export const dayOffReason = (day: string, term: Term | null | undefined): string | null => {
+  if (isWeekend(day)) return `${longDate(day)} is a weekend.`;
+  if (!term?.term_start || !term.term_end) return null;
+  if (day < term.term_start || day > term.term_end) {
+    return `${longDate(day)} is outside the term (${shortDate(term.term_start)} to ${shortDate(term.term_end)}).`;
+  }
+  const holiday = term.holidays.find((h) => h.date === day);
+  return holiday ? `${longDate(day)} is a day off: ${holiday.label}.` : null;
+};
+
 /** The month to open on: today if it's in the term, else the term start, else the first event. */
 export const startingMonth = (term: Term | null | undefined, events: CalendarEvent[]) => {
   const today = todayISO();
